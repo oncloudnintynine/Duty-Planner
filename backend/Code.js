@@ -3,7 +3,7 @@ const SHEET_ID = '1nIikE-sV-htx-uSgH5cGKPhWfSJJctWP5WQtcbcHi_E';
 function getDbSheet() { return SpreadsheetApp.openById(SHEET_ID); }
 
 // ==========================================
-// 1. DATABASE SETUP  
+// 1. DATABASE SETUP 
 // ==========================================
 function setupDatabase() {
   const ss = getDbSheet();
