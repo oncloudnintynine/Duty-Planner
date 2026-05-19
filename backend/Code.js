@@ -9,12 +9,13 @@ function getDbSheet() {
 // ==========================================
 function setupDatabase() {
   var ss = getDbSheet();
+  // Expanded Schema for Seniority, Types, Concurrency, and Reqs
   var setupConfig = {
-    "Roles": ["RoleID", "RoleName", "Is24_7", "DaysOfWeek"],
-    "Shifts": ["ShiftID", "RoleID", "ShiftName", "StartTime", "EndTime"],
-    "Personnel": ["PersonID", "PersonName"],
+    "Roles": ["RoleID", "RoleName", "Is24_7", "DaysOfWeek", "RoleType", "ConcurrentRoles"],
+    "Shifts": ["ShiftID", "RoleID", "ShiftName", "StartTime", "EndTime", "SeniorityReqs"],
+    "Personnel": ["PersonID", "PersonName", "Seniority"],
     "Tags": ["TagID", "PersonID", "RoleID"],
-    "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "StartDateTime", "EndDateTime", "PersonName"]
+    "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "SeniorityReq", "StartDateTime", "EndDateTime", "PersonName", "PersonID"]
   };
 
   var sheetNames = Object.keys(setupConfig);
@@ -25,6 +26,8 @@ function setupDatabase() {
     if (!sheet) { 
       sheet = ss.insertSheet(sheetName); 
     }
+    // Safe upgrade: Ensure headers match without deleting data if possible, 
+    // but overwrite row 1 to guarantee schema
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
@@ -35,11 +38,11 @@ function setupDatabase() {
 // ==========================================
 function syncData() {
   return {
-    personnel: getTableData("Personnel", ["id", "name"]),
-    roles: getTableData("Roles", ["id", "name", "is247", "days"]),
-    shifts: getTableData("Shifts", ["id", "roleId", "name", "start", "end"]),
+    personnel: getTableData("Personnel", ["id", "name", "seniority"]),
+    roles: getTableData("Roles", ["id", "name", "is247", "days", "type", "concurrentRoles"]),
+    shifts: getTableData("Shifts", ["id", "roleId", "name", "start", "end", "reqs"]),
     tags: getTableData("Tags", ["id", "personId", "roleId"]),
-    schedule: getTableData("Schedule", ["id", "yearMonth", "date", "role", "shift", "start", "end", "person"])
+    schedule: getTableData("Schedule", ["id", "yearMonth", "date", "role", "shift", "seniorityReq", "start", "end", "personName", "personId"])
   };
 }
 
@@ -52,7 +55,6 @@ function getTableData(sheetName, keys) {
     var obj = {};
     for (var j = 0; j < keys.length; j++) {
       var val = rows[i][j];
-      // Normalize dates to ISO strings for frontend
       if (val && Object.prototype.toString.call(val) === '[object Date]') {
         val = val.toISOString();
       }
@@ -75,8 +77,20 @@ function deleteRow(sheetName, id) {
   }
 }
 
+function updateRow(sheetName, id, newDataArray) {
+  var sheet = getDbSheet().getSheetByName(sheetName);
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.getRange(i + 1, 1, 1, newDataArray.length).setValues([newDataArray]);
+      return;
+    }
+  }
+}
+
 // ==========================================
-// 3. API ROUTER (POST ONLY FOR MUTATIONS & SYNC)
+// 3. API ROUTER 
 // ==========================================
 function doPost(e) {
   var response = { status: "success" };
@@ -90,22 +104,24 @@ function doPost(e) {
     var action = data.action;
 
     if (action === "sync") {
-      // Just returns syncData at the end
+      // Return sync at end
     } 
     else if (action === "addPerson") {
-      getDbSheet().getSheetByName("Personnel").appendRow([Utilities.getUuid(), data.personName]);
+      getDbSheet().getSheetByName("Personnel").appendRow([Utilities.getUuid(), data.personName, data.seniority || 'Junior']);
     } 
+    else if (action === "updatePerson") {
+      updateRow("Personnel", data.id, [data.id, data.personName, data.seniority]);
+    }
     else if (action === "importPersonnel") {
       var pSheet = getDbSheet().getSheetByName("Personnel");
       if (data.names && data.names.length > 0) {
         data.names.forEach(function(name) {
-          pSheet.appendRow([Utilities.getUuid(), name]);
+          pSheet.appendRow([Utilities.getUuid(), name, 'Junior']);
         });
       }
     } 
     else if (action === "deletePerson") {
       deleteRow("Personnel", data.id);
-      // Cascade delete assignments
       var tSheet = getDbSheet().getSheetByName("Tags");
       var tData = tSheet.getDataRange().getValues();
       for (var i = tData.length - 1; i >= 1; i--) {
@@ -115,18 +131,21 @@ function doPost(e) {
     else if (action === "addRole") {
       var roleId = Utilities.getUuid();
       var daysStr = Array.isArray(data.daysOfWeek) ? data.daysOfWeek.join(",") : "";
-      getDbSheet().getSheetByName("Roles").appendRow([roleId, data.roleName, data.is247, daysStr]);
+      var concurrentStr = Array.isArray(data.concurrentRoles) ? JSON.stringify(data.concurrentRoles) : "[]";
+      
+      getDbSheet().getSheetByName("Roles").appendRow([
+        roleId, data.roleName, data.is247, daysStr, data.roleType, concurrentStr
+      ]);
+      
       var sSheet = getDbSheet().getSheetByName("Shifts");
       if (data.shifts && data.shifts.length > 0) {
          data.shifts.forEach(function(s) {
-           // Prepend tick to force string literal to prevent Sheets from mangling 24h times
-           sSheet.appendRow([Utilities.getUuid(), roleId, s.name, "'" + s.start, "'" + s.end]);
+           sSheet.appendRow([Utilities.getUuid(), roleId, s.name, "'" + s.start, "'" + s.end, JSON.stringify(s.reqs)]);
          });
       }
     } 
     else if (action === "deleteRole") {
       deleteRow("Roles", data.id);
-      // Cascade delete shifts and tags
       var shSheet = getDbSheet().getSheetByName("Shifts");
       var shData = shSheet.getDataRange().getValues();
       for (var j = shData.length - 1; j >= 1; j--) {
@@ -139,7 +158,15 @@ function doPost(e) {
       }
     } 
     else if (action === "tagPerson") {
-      getDbSheet().getSheetByName("Tags").appendRow([Utilities.getUuid(), data.personId, data.roleId]);
+      var tagsSheet = getDbSheet().getSheetByName("Tags");
+      var existingTags = tagsSheet.getDataRange().getValues();
+      var exists = false;
+      for (var x = 1; x < existingTags.length; x++) {
+          if (existingTags[x][1] === data.personId && existingTags[x][2] === data.roleId) exists = true;
+      }
+      if (!exists) {
+          tagsSheet.appendRow([Utilities.getUuid(), data.personId, data.roleId]);
+      }
     } 
     else if (action === "deleteTag") {
       deleteRow("Tags", data.id);
@@ -151,7 +178,6 @@ function doPost(e) {
       throw new Error("Unknown action: " + action);
     }
     
-    // Always return full fresh DB to keep frontend in sync
     response.data = syncData();
     response.message = action !== "sync" ? "Action completed successfully." : null;
 
@@ -163,15 +189,24 @@ function doPost(e) {
 }
 
 // ==========================================
-// 4. THE SCHEDULING ENGINE (Heuristic)
+// 4. THE SCHEDULING ENGINE (Heuristic & Constraints)
 // ==========================================
+function getWeekKey(dateObj) {
+  var d = new Date(dateObj.getTime());
+  var day = d.getDay() || 7; 
+  d.setDate(d.getDate() + 4 - day);
+  var year = d.getFullYear();
+  var firstDay = new Date(year, 0, 1);
+  var week = Math.ceil((((d - firstDay) / 86400000) + 1) / 7);
+  return year + "-W" + week;
+}
+
 function generateSchedule(year, month) {
   var ss = getDbSheet();
   var scheduleSheet = ss.getSheetByName("Schedule");
-  
   var targetYM = year + "-" + String(month).padStart(2, '0');
   
-  // Wipe old data for this month to regenerate
+  // Wipe old data for this month
   var existingData = scheduleSheet.getDataRange().getValues();
   for (var i = existingData.length - 1; i >= 1; i--) {
     if (existingData[i][1] === targetYM) {
@@ -179,18 +214,56 @@ function generateSchedule(year, month) {
     }
   }
 
-  var roles = getTableData("Roles", ["id", "name", "is247", "days"]);
-  var shifts = getTableData("Shifts", ["id", "roleId", "name", "start", "end"]);
+  // Load Data
+  var roles = getTableData("Roles", ["id", "name", "is247", "days", "type", "concurrentRoles"]);
+  var shifts = getTableData("Shifts", ["id", "roleId", "name", "start", "end", "reqs"]);
   var tags = getTableData("Tags", ["id", "personId", "roleId"]);
-  var personnel = getTableData("Personnel", ["id", "name"]);
+  var personnel = getTableData("Personnel", ["id", "name", "seniority"]);
 
-  var personMap = {};
-  personnel.forEach(function(p) {
-    personMap[p.id] = { name: p.name, totalMinutes: 0, shifts: [] };
+  // Role Map for quick access
+  var roleMap = {};
+  roles.forEach(function(r) {
+    var cRoles = [];
+    try { cRoles = JSON.parse(r.concurrentRoles || "[]"); } catch(e) {}
+    roleMap[r.id] = { type: r.type, concurrentRoles: cRoles };
   });
 
-  var allSlots = [];
+  // Person Map & Pre-fill Normal Office Hours
+  var personMap = {};
   var daysInMonth = new Date(year, month, 0).getDate();
+  
+  personnel.forEach(function(p) {
+    personMap[p.id] = { 
+      name: p.name, 
+      seniority: p.seniority || 'Junior', 
+      totalDutyMinutes: 0, 
+      blocks: [], 
+      weeklyHours: {} 
+    };
+
+    // Pre-populate standard office hours (Mon-Fri 0800-1730)
+    for (var d = 1; d <= daysInMonth; d++) {
+      var cDate = new Date(year, month - 1, d);
+      var dayOfWeek = cDate.getDay();
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Mon-Fri
+        var sdt = new Date(year, month - 1, d, 8, 0, 0);
+        var edt = new Date(year, month - 1, d, 17, 30, 0);
+        var wk = getWeekKey(sdt);
+        personMap[p.id].blocks.push({
+          type: 'office',
+          startDT: sdt,
+          endDT: edt,
+          durationH: 9.5, // 9.5 elapsed hours
+          active: true,
+          dateStr: year + "-" + String(month).padStart(2,'0') + "-" + String(d).padStart(2,'0')
+        });
+        personMap[p.id].weeklyHours[wk] = (personMap[p.id].weeklyHours[wk] || 0) + 9.5;
+      }
+    }
+  });
+
+  // Explode shifts into individual slots based on Seniority Reqs
+  var allSlots = [];
   var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   for (var d = 1; d <= daysInMonth; d++) {
@@ -199,69 +272,155 @@ function generateSchedule(year, month) {
     var dateString = year + "-" + String(month).padStart(2,'0') + "-" + String(d).padStart(2,'0');
 
     roles.forEach(function(role) {
-      if (role.days.indexOf(dayStr) !== -1) {
+      if (role.days.indexOf(dayStr) !== -1 || role.is247 === true || role.is247 === "TRUE") {
         var roleShifts = shifts.filter(function(s) { return s.roleId === role.id; });
         
         roleShifts.forEach(function(shift) {
-          // Clean the string just in case it contains extra formatting
           var st = String(shift.start).substring(0, 5); 
           var et = String(shift.end).substring(0, 5);
-          
           var startDT = new Date(dateString + "T" + st + ":00");
           var endDT = new Date(dateString + "T" + et + ":00");
-          if (endDT <= startDT) {
-            endDT.setDate(endDT.getDate() + 1); // Overnight logic
-          }
+          if (endDT <= startDT) endDT.setDate(endDT.getDate() + 1);
           
-          var possibleCandidates = tags.filter(function(t) { return t.roleId === role.id; })
-                                       .map(function(t) { return t.personId; });
-          
-          allSlots.push({
-            dateString: dateString,
-            roleName: role.name,
-            shiftName: shift.name,
-            startDT: startDT,
-            endDT: endDT,
-            possibleCandidates: possibleCandidates
+          var reqs = {};
+          try { reqs = JSON.parse(shift.reqs || "{}"); } catch(e){}
+
+          // Generate a slot for each required headcount per seniority level
+          ['Senior', 'Mid', 'Junior'].forEach(function(lvl) {
+             var count = parseInt(reqs[lvl]) || 0;
+             for (var c = 0; c < count; c++) {
+                allSlots.push({
+                  dateString: dateString,
+                  roleId: role.id,
+                  roleName: role.name,
+                  shiftName: shift.name,
+                  startDT: startDT,
+                  endDT: endDT,
+                  reqSeniority: lvl,
+                  durationH: (endDT.getTime() - startDT.getTime()) / 3600000
+                });
+             }
           });
         });
       }
     });
   }
 
+  // Assign Slots Heuristically
   var newRows = [];
+  
   allSlots.forEach(function(slot) {
-    var assignedPerson = null;
-    
-    var candidates = slot.possibleCandidates.filter(function(pId) {
+    var possibleCandidates = tags.filter(function(t) { return t.roleId === slot.roleId; })
+                                 .map(function(t) { return t.personId; });
+
+    var validCandidates = [];
+    var rData = roleMap[slot.roleId];
+
+    possibleCandidates.forEach(function(pId) {
       var person = personMap[pId];
-      if (!person) return false;
-      
+      if (!person) return;
+      if (person.seniority !== slot.reqSeniority) return; // Must match exact seniority required
+
       var canWork = true;
-      for (var j = 0; j < person.shifts.length; j++) {
-        var s = person.shifts[j];
-        var hoursBetween = Math.abs(s.startDT.getTime() - slot.endDT.getTime()) / 3600000;
-        var hoursBetween2 = Math.abs(slot.startDT.getTime() - s.endDT.getTime()) / 3600000;
-        
-        // 11 Hour Rest Enforcement Heuristic
-        if ((slot.startDT < s.endDT && slot.endDT > s.startDT) || 
-            (slot.startDT >= s.endDT && hoursBetween2 < 11) ||
-            (s.startDT >= slot.endDT && hoursBetween < 11)) {
-          canWork = false;
-          break;
+      var blocksToWaive = []; // Office blocks that must be cancelled to enforce rest
+      var overlapConcurrencyOK = true;
+
+      for (var j = 0; j < person.blocks.length; j++) {
+        var b = person.blocks[j];
+        if (!b.active) continue;
+
+        var isOverlap = (slot.startDT < b.endDT && slot.endDT > b.startDT);
+        var hoursBetweenEndStart = Math.abs(b.startDT.getTime() - slot.endDT.getTime()) / 3600000;
+        var hoursBetweenStartEnd = Math.abs(slot.startDT.getTime() - b.endDT.getTime()) / 3600000;
+        var violatesRest = false;
+
+        if (isOverlap) {
+            violatesRest = true;
+        } else if (slot.startDT >= b.endDT && hoursBetweenStartEnd < 11) {
+            violatesRest = true;
+        } else if (b.startDT >= slot.endDT && hoursBetweenEndStart < 11) {
+            violatesRest = true;
+        }
+
+        if (violatesRest) {
+           if (b.type === 'office') {
+               // We can waive this office block (grant Off-In-Lieu) to make the shift possible
+               blocksToWaive.push(b);
+           } else if (b.type === 'shift') {
+               // If overlapping another shift, check if concurrency is allowed
+               if (isOverlap) {
+                   var existingRoleData = roleMap[b.roleId];
+                   var aAllowsB = (rData.concurrentRoles.indexOf(b.roleId) !== -1);
+                   var bAllowsA = (existingRoleData.concurrentRoles.indexOf(slot.roleId) !== -1);
+                   if (aAllowsB || bAllowsA) {
+                       // Concurrent allowed. No violation.
+                       violatesRest = false; 
+                   }
+               }
+               
+               if (violatesRest) {
+                   canWork = false;
+                   break; // Cannot waive another duty shift
+               }
+           }
         }
       }
-      return canWork;
+
+      if (canWork) {
+         // Check if this puts them over 44 hours for the week
+         var wk = getWeekKey(slot.startDT);
+         var currentWkHrs = person.weeklyHours[wk] || 0;
+         
+         // Calculate net hours if we waive office blocks
+         var waivedHours = 0;
+         blocksToWaive.forEach(function(wb) { waivedHours += wb.durationH; });
+         
+         // Standby roles only count as 50% towards working hour limit strictly for logic capacity
+         var shiftCost = rData.type === 'Standby' ? (slot.durationH * 0.5) : slot.durationH;
+         
+         if ((currentWkHrs - waivedHours + shiftCost) <= 44) {
+             validCandidates.push({
+                 id: pId,
+                 waiveBlocks: blocksToWaive,
+                 shiftCost: shiftCost,
+                 wk: wk
+             });
+         }
+      }
     });
 
-    if (candidates.length > 0) {
-      candidates.sort(function(a, b) { return personMap[a].totalMinutes - personMap[b].totalMinutes; });
-      var selectedId = candidates[0];
-      assignedPerson = personMap[selectedId].name;
-      personMap[selectedId].totalMinutes += (slot.endDT.getTime() - slot.startDT.getTime()) / 60000;
-      personMap[selectedId].shifts.push(slot);
-    } else {
-      assignedPerson = "UNFILLED";
+    var assignedPersonName = "UNFILLED";
+    var assignedPersonId = "";
+
+    if (validCandidates.length > 0) {
+      // Sort by least total duty minutes to ensure fairness
+      validCandidates.sort(function(a, b) { 
+          return personMap[a.id].totalDutyMinutes - personMap[b.id].totalDutyMinutes; 
+      });
+      
+      var selected = validCandidates[0];
+      var pData = personMap[selected.id];
+
+      // Apply waives
+      selected.waiveBlocks.forEach(function(wb) {
+         wb.active = false;
+         pData.weeklyHours[selected.wk] -= wb.durationH;
+      });
+
+      // Apply new shift
+      pData.weeklyHours[selected.wk] = (pData.weeklyHours[selected.wk] || 0) + selected.shiftCost;
+      pData.totalDutyMinutes += (slot.durationH * 60);
+      pData.blocks.push({
+          type: 'shift',
+          roleId: slot.roleId,
+          startDT: slot.startDT,
+          endDT: slot.endDT,
+          durationH: slot.durationH,
+          active: true
+      });
+
+      assignedPersonName = pData.name;
+      assignedPersonId = selected.id;
     }
 
     newRows.push([
@@ -270,9 +429,11 @@ function generateSchedule(year, month) {
       slot.dateString,
       slot.roleName,
       slot.shiftName,
+      slot.reqSeniority,
       slot.startDT.toISOString(),
       slot.endDT.toISOString(),
-      assignedPerson
+      assignedPersonName,
+      assignedPersonId
     ]);
   });
 
