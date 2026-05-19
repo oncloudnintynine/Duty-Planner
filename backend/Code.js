@@ -30,7 +30,7 @@ function setupDatabase() {
   }
 }
 
-// RUN THIS FUNCTION ONCE FROM THE EDITOR TO UPGRADE EXISTING DATA
+// RUN THIS FUNCTION ONCE TO UPGRADE EXISTING DATA
 function runMigration() {
   var ss = getDbSheet();
   
@@ -153,6 +153,12 @@ function doPost(e) {
     if (action === "sync") {
       // Return sync at end
     } 
+    else if (action === "setupDatabase") {
+      setupDatabase();
+    }
+    else if (action === "runMigration") {
+      runMigration();
+    }
     else if (action === "addPerson") {
       getDbSheet().getSheetByName("Personnel").appendRow([Utilities.getUuid(), data.personName, data.seniority || 'Junior']);
     } 

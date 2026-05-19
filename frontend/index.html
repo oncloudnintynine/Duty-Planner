@@ -99,6 +99,7 @@
                         ${state.activeTab === 'manage' ? ManageView(state) : ''}
                         ${state.activeTab === 'roster' ? RosterView(state) : ''}
                         ${state.activeTab === 'calc' ? ManpowerCalculatorView(state) : ''}
+                        ${state.activeTab === 'settings' ? AdvancedSettingsView(state) : ''}
                     </div>
                 </main>
             </div>
@@ -112,7 +113,8 @@
                 { id: 'setup', name: 'Topology & Setup', icon: 'database' },
                 { id: 'manage', name: 'Personnel & Assignments', icon: 'users' },
                 { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' },
-                { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' }
+                { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' },
+                { id: 'settings', name: 'Advanced Settings', icon: 'alert-triangle' }
             ];
             return `
             <aside class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col z-10 shadow-2xl">
@@ -126,13 +128,61 @@
                 </div>
                 <nav class="flex-1 p-4 space-y-2">
                     ${tabs.map(t => `
-                        <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${state.activeTab === t.id ? 'active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'} border-r-2 border-transparent">
+                        <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-red-500/10 hover:text-red-400' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent">
                             <i data-lucide="${t.icon}" class="w-5 h-5"></i>
                             ${t.name}
                         </button>
                     `).join('')}
                 </nav>
             </aside>
+            `;
+        }
+
+        function AdvancedSettingsView(state) {
+            return `
+            <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+                <div class="mb-4">
+                    <h2 class="text-2xl font-bold text-white">Advanced Settings & Migrations</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Direct access to Google Apps Script system functions.</p>
+                </div>
+
+                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 shadow-sm flex items-start gap-4">
+                    <div class="mt-0.5"><i data-lucide="alert-octagon" class="w-6 h-6 text-red-400"></i></div>
+                    <div>
+                        <h3 class="text-red-400 font-bold tracking-wide uppercase text-sm mb-1">Warning: Data Loss Potential</h3>
+                        <p class="text-red-400/80 text-sm leading-relaxed">
+                            Activating these functions may cause data loss or modify the underlying database schema. 
+                            <strong>Only use these tools if you know exactly what you are doing or if instructed by a developer.</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+                    <div class="p-6 border-b border-zinc-800/50 flex flex-col md:flex-row gap-6 md:items-center justify-between hover:bg-zinc-800/20 transition-colors">
+                        <div>
+                            <h4 class="text-white font-semibold flex items-center gap-2 mb-1">
+                                <i data-lucide="database-zap" class="w-4 h-4 text-indigo-400"></i> Initialize Database Schema
+                            </h4>
+                            <p class="text-sm text-zinc-500">Creates all required missing sheets and headers. Run this only when connecting to a completely empty Google Sheet for the first time.</p>
+                        </div>
+                        <button onclick="window.handleSetupDatabase()" class="shrink-0 bg-zinc-800 text-zinc-200 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors border border-zinc-700">
+                            Run Setup
+                        </button>
+                    </div>
+
+                    <div class="p-6 border-b border-zinc-800/50 flex flex-col md:flex-row gap-6 md:items-center justify-between hover:bg-zinc-800/20 transition-colors">
+                        <div>
+                            <h4 class="text-white font-semibold flex items-center gap-2 mb-1">
+                                <i data-lucide="file-up" class="w-4 h-4 text-orange-400"></i> Run Data Migration (v2)
+                            </h4>
+                            <p class="text-sm text-zinc-500">Upgrades existing v1 schema data to v2 (Adds Seniority, Types, and Concurrency Matrix). <span class="text-red-400 font-semibold">Warning: This will permanently wipe your existing Schedule tab.</span></p>
+                        </div>
+                        <button onclick="window.handleRunMigration()" class="shrink-0 bg-orange-500/10 text-orange-400 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-500/20 transition-colors border border-orange-500/30">
+                            Execute Migration
+                        </button>
+                    </div>
+                </div>
+            </div>
             `;
         }
 
@@ -601,6 +651,18 @@
         window.switchTab = (tab) => { 
             UI.state.activeTab = tab; 
             UI.render(); 
+        };
+
+        window.handleSetupDatabase = () => {
+            if(confirm("WARNING: Are you sure you want to initialize the database schema? Do this only on an empty Google Sheet.")) {
+                UI.dispatch('setupDatabase');
+            }
+        };
+
+        window.handleRunMigration = () => {
+            if(confirm("WARNING: This will upgrade the schema and permanently WIPE the existing schedule data. Proceed?")) {
+                UI.dispatch('runMigration');
+            }
         };
 
         window.handleAddPerson = () => {
