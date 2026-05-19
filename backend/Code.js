@@ -8,11 +8,12 @@ function getDbSheet() {
 // 1. DATABASE SETUP & MIGRATION
 // ==========================================
 var setupConfig = {
+  "Seniorities": ["SeniorityID", "LevelName", "SortOrder"],
   "Roles": ["RoleID", "RoleName", "Is24_7", "DaysOfWeek", "RoleType", "ConcurrentRoles"],
   "Shifts": ["ShiftID", "RoleID", "ShiftName", "StartTime", "EndTime", "SeniorityReqs"],
-  "Personnel": ["PersonID", "PersonName", "Seniority"],
+  "Personnel": ["PersonID", "PersonName", "SeniorityID"],
   "Tags": ["TagID", "PersonID", "RoleID"],
-  "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "SeniorityReq", "StartDateTime", "EndDateTime", "PersonName", "PersonID"]
+  "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "SeniorityReqName", "StartDateTime", "EndDateTime", "PersonName", "PersonID"]
 };
 
 function setupDatabase() {
@@ -28,50 +29,83 @@ function setupDatabase() {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
+
+  // Inject default seniorities if empty
+  var senSheet = ss.getSheetByName("Seniorities");
+  if (senSheet && senSheet.getLastRow() === 1) {
+    senSheet.appendRow([Utilities.getUuid(), "Junior", 3]);
+    senSheet.appendRow([Utilities.getUuid(), "Mid", 2]);
+    senSheet.appendRow([Utilities.getUuid(), "Senior", 1]);
+  }
 }
 
-// RUN THIS FUNCTION ONCE TO UPGRADE EXISTING DATA
+// RUN THIS FUNCTION ONCE TO UPGRADE EXISTING DATA TO V3 (Dynamic Seniorities)
 function runMigration() {
   var ss = getDbSheet();
   
-  // 1. Upgrade Personnel
+  // 1. Ensure Seniorities Sheet exists
+  var senSheet = ss.getSheetByName("Seniorities");
+  if (!senSheet) { senSheet = ss.insertSheet("Seniorities"); }
+  senSheet.clear();
+  senSheet.getRange(1, 1, 1, setupConfig["Seniorities"].length).setValues([setupConfig["Seniorities"]]).setFontWeight("bold");
+  
+  var idJun = Utilities.getUuid();
+  var idMid = Utilities.getUuid();
+  var idSen = Utilities.getUuid();
+  
+  senSheet.appendRow([idSen, "Senior", 1]);
+  senSheet.appendRow([idMid, "Mid", 2]);
+  senSheet.appendRow([idJun, "Junior", 3]);
+  
+  var mapNameId = { "Senior": idSen, "Mid": idMid, "Junior": idJun };
+
+  // 2. Upgrade Personnel to use IDs instead of strings
   var pSheet = ss.getSheetByName("Personnel");
   if (pSheet) {
      pSheet.getRange(1, 1, 1, setupConfig["Personnel"].length).setValues([setupConfig["Personnel"]]).setFontWeight("bold");
      var pData = pSheet.getDataRange().getValues();
      for (var i = 1; i < pData.length; i++) {
-       if (!pData[i][2]) pSheet.getRange(i + 1, 3).setValue("Junior");
+       var oldSen = pData[i][2];
+       if (mapNameId[oldSen]) {
+           pSheet.getRange(i + 1, 3).setValue(mapNameId[oldSen]);
+       } else {
+           pSheet.getRange(i + 1, 3).setValue(idJun); // Fallback to Junior
+       }
      }
   }
 
-  // 2. Upgrade Roles
+  // 3. Upgrade Roles
   var rSheet = ss.getSheetByName("Roles");
   if (rSheet) {
      rSheet.getRange(1, 1, 1, setupConfig["Roles"].length).setValues([setupConfig["Roles"]]).setFontWeight("bold");
-     var rData = rSheet.getDataRange().getValues();
-     for (var j = 1; j < rData.length; j++) {
-       if (!rData[j][4]) rSheet.getRange(j + 1, 5).setValue("On-Site");
-       if (!rData[j][5]) rSheet.getRange(j + 1, 6).setValue("[]");
-     }
   }
 
-  // 3. Upgrade Shifts
+  // 4. Upgrade Shifts to use Seniority IDs in JSON Reqs
   var sSheet = ss.getSheetByName("Shifts");
   if (sSheet) {
      sSheet.getRange(1, 1, 1, setupConfig["Shifts"].length).setValues([setupConfig["Shifts"]]).setFontWeight("bold");
      var sData = sSheet.getDataRange().getValues();
      for (var k = 1; k < sData.length; k++) {
-       if (!sData[k][5]) sSheet.getRange(k + 1, 6).setValue(JSON.stringify({Senior:0, Mid:0, Junior:1}));
+       var reqsStr = sData[k][5];
+       var reqs = {};
+       try { reqs = JSON.parse(reqsStr || "{}"); } catch(e){}
+       
+       var newReqs = {};
+       if(reqs["Senior"] !== undefined) newReqs[idSen] = reqs["Senior"];
+       if(reqs["Mid"] !== undefined) newReqs[idMid] = reqs["Mid"];
+       if(reqs["Junior"] !== undefined) newReqs[idJun] = reqs["Junior"];
+       
+       sSheet.getRange(k + 1, 6).setValue(JSON.stringify(newReqs));
      }
   }
   
-  // 4. Upgrade Tags
+  // 5. Upgrade Tags
   var tSheet = ss.getSheetByName("Tags");
   if (tSheet) {
      tSheet.getRange(1, 1, 1, setupConfig["Tags"].length).setValues([setupConfig["Tags"]]).setFontWeight("bold");
   }
 
-  // 5. Clear and Upgrade Schedule (Column formats shifted entirely, needs wipe)
+  // 6. Clear and Upgrade Schedule Schema
   var schSheet = ss.getSheetByName("Schedule");
   if (schSheet) {
      schSheet.clear();
@@ -85,11 +119,12 @@ function runMigration() {
 // ==========================================
 function syncData() {
   return {
+    seniorities: getTableData("Seniorities", ["id", "name", "order"]),
     personnel: getTableData("Personnel", ["id", "name", "seniority"]),
     roles: getTableData("Roles", ["id", "name", "is247", "days", "type", "concurrentRoles"]),
     shifts: getTableData("Shifts", ["id", "roleId", "name", "start", "end", "reqs"]),
     tags: getTableData("Tags", ["id", "personId", "roleId"]),
-    schedule: getTableData("Schedule", ["id", "yearMonth", "date", "role", "shift", "seniorityReq", "start", "end", "personName", "personId"])
+    schedule: getTableData("Schedule", ["id", "yearMonth", "date", "role", "shift", "seniorityReqName", "start", "end", "personName", "personId"])
   };
 }
 
@@ -159,17 +194,45 @@ function doPost(e) {
     else if (action === "runMigration") {
       runMigration();
     }
+    else if (action === "addSeniorityTier") {
+      getDbSheet().getSheetByName("Seniorities").appendRow([Utilities.getUuid(), data.name, data.order]);
+    }
+    else if (action === "updateSeniorityTier") {
+      updateRow("Seniorities", data.id, [data.id, data.name, data.order]);
+    }
+    else if (action === "deleteSeniorityTier") {
+      deleteRow("Seniorities", data.id);
+      
+      // Cleanup Personnel
+      var pSheet = getDbSheet().getSheetByName("Personnel");
+      var pData = pSheet.getDataRange().getValues();
+      for (var i = pData.length - 1; i >= 1; i--) {
+        if (pData[i][2] === data.id) pSheet.getRange(i + 1, 3).setValue("");
+      }
+
+      // Cleanup Shifts (Remove specific key from JSON object safely)
+      var sSheet = getDbSheet().getSheetByName("Shifts");
+      var sData = sSheet.getDataRange().getValues();
+      for (var j = sData.length - 1; j >= 1; j--) {
+        var reqs = {};
+        try { reqs = JSON.parse(sData[j][5] || "{}"); } catch(ex){}
+        if (reqs[data.id] !== undefined) {
+          delete reqs[data.id];
+          sSheet.getRange(j + 1, 6).setValue(JSON.stringify(reqs));
+        }
+      }
+    }
     else if (action === "addPerson") {
-      getDbSheet().getSheetByName("Personnel").appendRow([Utilities.getUuid(), data.personName, data.seniority || 'Junior']);
+      getDbSheet().getSheetByName("Personnel").appendRow([Utilities.getUuid(), data.personName, data.seniority]);
     } 
     else if (action === "updatePerson") {
       updateRow("Personnel", data.id, [data.id, data.personName, data.seniority]);
     }
     else if (action === "importPersonnel") {
-      var pSheet = getDbSheet().getSheetByName("Personnel");
+      var pSheet2 = getDbSheet().getSheetByName("Personnel");
       if (data.names && data.names.length > 0) {
         data.names.forEach(function(name) {
-          pSheet.appendRow([Utilities.getUuid(), name, 'Junior']);
+          pSheet2.appendRow([Utilities.getUuid(), name, data.defaultSeniority]);
         });
       }
     } 
@@ -177,8 +240,8 @@ function doPost(e) {
       deleteRow("Personnel", data.id);
       var tSheet = getDbSheet().getSheetByName("Tags");
       var tData = tSheet.getDataRange().getValues();
-      for (var i = tData.length - 1; i >= 1; i--) {
-        if (tData[i][1] === data.id) tSheet.deleteRow(i + 1);
+      for (var k = tData.length - 1; k >= 1; k--) {
+        if (tData[k][1] === data.id) tSheet.deleteRow(k + 1);
       }
     } 
     else if (action === "addRole") {
@@ -190,10 +253,10 @@ function doPost(e) {
         roleId, data.roleName, data.is247, daysStr, data.roleType, concurrentStr
       ]);
       
-      var sSheet = getDbSheet().getSheetByName("Shifts");
+      var sSheet2 = getDbSheet().getSheetByName("Shifts");
       if (data.shifts && data.shifts.length > 0) {
          data.shifts.forEach(function(s) {
-           sSheet.appendRow([Utilities.getUuid(), roleId, s.name, "'" + s.start, "'" + s.end, JSON.stringify(s.reqs)]);
+           sSheet2.appendRow([Utilities.getUuid(), roleId, s.name, "'" + s.start, "'" + s.end, JSON.stringify(s.reqs)]);
          });
       }
     } 
@@ -201,13 +264,13 @@ function doPost(e) {
       deleteRow("Roles", data.id);
       var shSheet = getDbSheet().getSheetByName("Shifts");
       var shData = shSheet.getDataRange().getValues();
-      for (var j = shData.length - 1; j >= 1; j--) {
-        if (shData[j][1] === data.id) shSheet.deleteRow(j + 1);
+      for (var m = shData.length - 1; m >= 1; m--) {
+        if (shData[m][1] === data.id) shSheet.deleteRow(m + 1);
       }
       var tgSheet = getDbSheet().getSheetByName("Tags");
-      var tgData = tgSheet.getDataRange().getValues();
-      for (var k = tgData.length - 1; k >= 1; k--) {
-        if (tgData[k][2] === data.id) tgSheet.deleteRow(k + 1);
+      var tgData2 = tgSheet.getDataRange().getValues();
+      for (var n = tgData2.length - 1; n >= 1; n--) {
+        if (tgData2[n][2] === data.id) tgSheet.deleteRow(n + 1);
       }
     } 
     else if (action === "tagPerson") {
@@ -268,10 +331,15 @@ function generateSchedule(year, month) {
   }
 
   // Load Data
+  var seniorities = getTableData("Seniorities", ["id", "name", "order"]);
   var roles = getTableData("Roles", ["id", "name", "is247", "days", "type", "concurrentRoles"]);
   var shifts = getTableData("Shifts", ["id", "roleId", "name", "start", "end", "reqs"]);
   var tags = getTableData("Tags", ["id", "personId", "roleId"]);
   var personnel = getTableData("Personnel", ["id", "name", "seniority"]);
+
+  // Map Seniority Names
+  var senMap = {};
+  seniorities.forEach(function(s) { senMap[s.id] = s.name; });
 
   // Role Map for quick access
   var roleMap = {};
@@ -288,7 +356,7 @@ function generateSchedule(year, month) {
   personnel.forEach(function(p) {
     personMap[p.id] = { 
       name: p.name, 
-      seniority: p.seniority || 'Junior', 
+      seniorityId: p.seniority, 
       totalDutyMinutes: 0, 
       blocks: [], 
       weeklyHours: {} 
@@ -298,7 +366,7 @@ function generateSchedule(year, month) {
     for (var d = 1; d <= daysInMonth; d++) {
       var cDate = new Date(year, month - 1, d);
       var dayOfWeek = cDate.getDay();
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Mon-Fri
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) { 
         var sdt = new Date(year, month - 1, d, 8, 0, 0);
         var edt = new Date(year, month - 1, d, 17, 30, 0);
         var wk = getWeekKey(sdt);
@@ -315,7 +383,7 @@ function generateSchedule(year, month) {
     }
   });
 
-  // Explode shifts into individual slots based on Seniority Reqs
+  // Explode shifts into individual slots based on Dynamic Seniority Reqs
   var allSlots = [];
   var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -338,9 +406,9 @@ function generateSchedule(year, month) {
           var reqs = {};
           try { reqs = JSON.parse(shift.reqs || "{}"); } catch(e){}
 
-          // Generate a slot for each required headcount per seniority level
-          ['Senior', 'Mid', 'Junior'].forEach(function(lvl) {
-             var count = parseInt(reqs[lvl]) || 0;
+          // Generate a slot for each required headcount per dynamic seniority ID
+          seniorities.forEach(function(senObj) {
+             var count = parseInt(reqs[senObj.id]) || 0;
              for (var c = 0; c < count; c++) {
                 allSlots.push({
                   dateString: dateString,
@@ -349,7 +417,8 @@ function generateSchedule(year, month) {
                   shiftName: shift.name,
                   startDT: startDT,
                   endDT: endDT,
-                  reqSeniority: lvl,
+                  reqSeniorityId: senObj.id,
+                  reqSeniorityName: senObj.name,
                   durationH: (endDT.getTime() - startDT.getTime()) / 3600000
                 });
              }
@@ -372,12 +441,11 @@ function generateSchedule(year, month) {
     possibleCandidates.forEach(function(pId) {
       var person = personMap[pId];
       if (!person) return;
-      if (person.seniority !== slot.reqSeniority) return; // Must match exact seniority required
+      if (person.seniorityId !== slot.reqSeniorityId) return; // Exact match required based on DB ID
 
       var canWork = true;
-      var blocksToWaive = []; // Office blocks that must be cancelled to enforce rest
-      var overlapConcurrencyOK = true;
-
+      var blocksToWaive = []; 
+      
       for (var j = 0; j < person.blocks.length; j++) {
         var b = person.blocks[j];
         if (!b.active) continue;
@@ -397,38 +465,32 @@ function generateSchedule(year, month) {
 
         if (violatesRest) {
            if (b.type === 'office') {
-               // We can waive this office block (grant Off-In-Lieu) to make the shift possible
-               blocksToWaive.push(b);
+               blocksToWaive.push(b); // Waive office day (OIL)
            } else if (b.type === 'shift') {
-               // If overlapping another shift, check if concurrency is allowed
+               // Concurrency checks
                if (isOverlap) {
                    var existingRoleData = roleMap[b.roleId];
                    var aAllowsB = (rData.concurrentRoles.indexOf(b.roleId) !== -1);
                    var bAllowsA = (existingRoleData.concurrentRoles.indexOf(slot.roleId) !== -1);
                    if (aAllowsB || bAllowsA) {
-                       // Concurrent allowed. No violation.
                        violatesRest = false; 
                    }
                }
-               
                if (violatesRest) {
                    canWork = false;
-                   break; // Cannot waive another duty shift
+                   break; 
                }
            }
         }
       }
 
       if (canWork) {
-         // Check if this puts them over 44 hours for the week
          var wk = getWeekKey(slot.startDT);
          var currentWkHrs = person.weeklyHours[wk] || 0;
          
-         // Calculate net hours if we waive office blocks
          var waivedHours = 0;
          blocksToWaive.forEach(function(wb) { waivedHours += wb.durationH; });
          
-         // Standby roles only count as 50% towards working hour limit strictly for logic capacity
          var shiftCost = rData.type === 'Standby' ? (slot.durationH * 0.5) : slot.durationH;
          
          if ((currentWkHrs - waivedHours + shiftCost) <= 44) {
@@ -446,7 +508,6 @@ function generateSchedule(year, month) {
     var assignedPersonId = "";
 
     if (validCandidates.length > 0) {
-      // Sort by least total duty minutes to ensure fairness
       validCandidates.sort(function(a, b) { 
           return personMap[a.id].totalDutyMinutes - personMap[b.id].totalDutyMinutes; 
       });
@@ -454,13 +515,11 @@ function generateSchedule(year, month) {
       var selected = validCandidates[0];
       var pData = personMap[selected.id];
 
-      // Apply waives
       selected.waiveBlocks.forEach(function(wb) {
          wb.active = false;
          pData.weeklyHours[selected.wk] -= wb.durationH;
       });
 
-      // Apply new shift
       pData.weeklyHours[selected.wk] = (pData.weeklyHours[selected.wk] || 0) + selected.shiftCost;
       pData.totalDutyMinutes += (slot.durationH * 60);
       pData.blocks.push({
@@ -482,7 +541,7 @@ function generateSchedule(year, month) {
       slot.dateString,
       slot.roleName,
       slot.shiftName,
-      slot.reqSeniority,
+      slot.reqSeniorityName,
       slot.startDT.toISOString(),
       slot.endDT.toISOString(),
       assignedPersonName,

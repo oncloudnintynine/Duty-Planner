@@ -33,7 +33,7 @@
                 lastMonth: '',
                 searchQuery: '',
                 selectedPersonId: null,
-                data: { personnel: [], roles: [], shifts: [], tags: [], schedule: [] },
+                data: { seniorities: [], personnel: [], roles: [], shifts: [], tags: [], schedule: [] },
                 toast: null
             },
             
@@ -86,6 +86,12 @@
             }
         };
 
+        // Helper
+        function getSeniorityName(id, state) {
+            const s = state.data.seniorities.find(x => x.id === id);
+            return s ? s.name : 'Unassigned';
+        }
+
         // ==============================================
         // COMPONENTS
         // ==============================================
@@ -114,7 +120,7 @@
                 { id: 'manage', name: 'Personnel & Assignments', icon: 'users' },
                 { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' },
                 { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' },
-                { id: 'settings', name: 'Advanced Settings', icon: 'alert-triangle' }
+                { id: 'settings', name: 'Advanced Settings', icon: 'settings' }
             ];
             return `
             <aside class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col z-10 shadow-2xl">
@@ -128,7 +134,7 @@
                 </div>
                 <nav class="flex-1 p-4 space-y-2">
                     ${tabs.map(t => `
-                        <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-red-500/10 hover:text-red-400' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent">
+                        <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent">
                             <i data-lucide="${t.icon}" class="w-5 h-5"></i>
                             ${t.name}
                         </button>
@@ -139,29 +145,63 @@
         }
 
         function AdvancedSettingsView(state) {
+            const sortedSen = [...state.data.seniorities].sort((a,b) => a.order - b.order);
+
             return `
             <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
                 <div class="mb-4">
-                    <h2 class="text-2xl font-bold text-white">Advanced Settings & Migrations</h2>
-                    <p class="text-zinc-400 text-sm mt-1">Direct access to Google Apps Script system functions.</p>
+                    <h2 class="text-2xl font-bold text-white">Advanced Settings</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Configure global application data and execute database operations.</p>
                 </div>
 
-                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 shadow-sm flex items-start gap-4">
-                    <div class="mt-0.5"><i data-lucide="alert-octagon" class="w-6 h-6 text-red-400"></i></div>
-                    <div>
-                        <h3 class="text-red-400 font-bold tracking-wide uppercase text-sm mb-1">Warning: Data Loss Potential</h3>
-                        <p class="text-red-400/80 text-sm leading-relaxed">
-                            Activating these functions may cause data loss or modify the underlying database schema. 
-                            <strong>Only use these tools if you know exactly what you are doing or if instructed by a developer.</strong>
-                        </p>
+                <!-- Seniority Tiers Manager -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mt-6">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2"><i data-lucide="bar-chart" class="w-5 h-5 text-indigo-400"></i> Manage Seniority Tiers</h3>
+                    <p class="text-sm text-zinc-400 mb-6">Define the levels of seniority in your organization. Changes here automatically update personnel records, shift requirements, and the manpower calculator.</p>
+                    
+                    <div class="space-y-4 mb-6">
+                        ${sortedSen.map(sen => `
+                            <div class="flex items-center gap-4 bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                <div class="flex flex-col">
+                                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Sort Order</label>
+                                    <input type="number" id="senOrder_${sen.id}" value="${sen.order}" class="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-sm text-white outline-none">
+                                </div>
+                                <div class="flex-1 flex flex-col">
+                                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Tier Name</label>
+                                    <input type="text" id="senName_${sen.id}" value="${sen.name}" class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-white outline-none">
+                                </div>
+                                <div class="flex items-end gap-2 mt-4">
+                                    <button onclick="window.handleUpdateSeniorityTier('${sen.id}')" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded px-3 py-1.5 text-sm font-medium transition-colors">Update</button>
+                                    <button onclick="window.handleDeleteSeniorityTier('${sen.id}')" class="text-zinc-500 hover:text-red-400 text-sm px-2 py-1.5 transition-colors" title="Delete Tier"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="pt-4 border-t border-zinc-800/50 flex gap-4 items-end">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1 block">New Tier Name</label>
+                            <input type="text" id="newSenName" placeholder="e.g. Trainee" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white outline-none">
+                        </div>
+                        <div class="w-32">
+                            <label class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1 block">Sort Order</label>
+                            <input type="number" id="newSenOrder" placeholder="e.g. 4" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white outline-none">
+                        </div>
+                        <button onclick="window.handleAddSeniorityTier()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors h-[38px]">Add Tier</button>
                     </div>
                 </div>
 
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+                <!-- Database System Tools -->
+                <div class="bg-red-500/5 border border-red-500/20 rounded-xl overflow-hidden shadow-xl mt-8">
+                    <div class="p-4 bg-red-500/10 border-b border-red-500/20 flex items-center gap-2">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400"></i>
+                        <h3 class="text-red-400 font-bold tracking-wide text-sm">System Database Operations</h3>
+                    </div>
+
                     <div class="p-6 border-b border-zinc-800/50 flex flex-col md:flex-row gap-6 md:items-center justify-between hover:bg-zinc-800/20 transition-colors">
                         <div>
                             <h4 class="text-white font-semibold flex items-center gap-2 mb-1">
-                                <i data-lucide="database-zap" class="w-4 h-4 text-indigo-400"></i> Initialize Database Schema
+                                <i data-lucide="database-zap" class="w-4 h-4 text-zinc-400"></i> Initialize Database Schema
                             </h4>
                             <p class="text-sm text-zinc-500">Creates all required missing sheets and headers. Run this only when connecting to a completely empty Google Sheet for the first time.</p>
                         </div>
@@ -173,9 +213,9 @@
                     <div class="p-6 border-b border-zinc-800/50 flex flex-col md:flex-row gap-6 md:items-center justify-between hover:bg-zinc-800/20 transition-colors">
                         <div>
                             <h4 class="text-white font-semibold flex items-center gap-2 mb-1">
-                                <i data-lucide="file-up" class="w-4 h-4 text-orange-400"></i> Run Data Migration (v2)
+                                <i data-lucide="file-up" class="w-4 h-4 text-orange-400"></i> Run Data Migration (v3)
                             </h4>
-                            <p class="text-sm text-zinc-500">Upgrades existing v1 schema data to v2 (Adds Seniority, Types, and Concurrency Matrix). <span class="text-red-400 font-semibold">Warning: This will permanently wipe your existing Schedule tab.</span></p>
+                            <p class="text-sm text-zinc-500">Upgrades existing data to support fully dynamic Seniority Tiers. <span class="text-red-400 font-semibold">Warning: This will clear existing Schedule generation.</span></p>
                         </div>
                         <button onclick="window.handleRunMigration()" class="shrink-0 bg-orange-500/10 text-orange-400 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-500/20 transition-colors border border-orange-500/30">
                             Execute Migration
@@ -297,17 +337,17 @@
                         </table>
                     </div>
                 </div>
-
             </div>
             `;
         }
 
         function ManageView(state) {
+            const sortedSen = [...state.data.seniorities].sort((a,b) => a.order - b.order);
+            const defaultSenId = sortedSen.length > 0 ? sortedSen[0].id : '';
+
             // Apply Fuzzy Search Filter
             const searchQ = state.searchQuery.toLowerCase();
             const filteredPersonnel = state.data.personnel.filter(p => p.name.toLowerCase().includes(searchQ));
-            
-            // Get Selected Person
             const selPerson = state.data.personnel.find(p => p.id === state.selectedPersonId);
             
             return `
@@ -322,16 +362,14 @@
                     <div class="flex-1 flex gap-2">
                         <input type="text" id="inpNewPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Add single person (e.g. Jane Doe)">
                         <select id="inpNewSeniority" class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300">
-                            <option value="Junior">Junior</option>
-                            <option value="Mid">Mid</option>
-                            <option value="Senior">Senior</option>
+                            ${sortedSen.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                         </select>
                         <button onclick="window.handleAddPerson()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors text-sm">Add</button>
                     </div>
                     <div class="w-px h-8 bg-zinc-800"></div>
                     <div class="flex-1 flex gap-2">
                         <input type="text" id="inpBulkPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Bulk Import (comma separated)">
-                        <button onclick="window.handleBulkImport()" class="bg-zinc-800 text-zinc-300 px-5 py-2 rounded-lg font-medium hover:bg-zinc-700 transition-colors text-sm border border-zinc-700">Import Default (Junior)</button>
+                        <button onclick="window.handleBulkImport('${defaultSenId}')" class="bg-zinc-800 text-zinc-300 px-5 py-2 rounded-lg font-medium hover:bg-zinc-700 transition-colors text-sm border border-zinc-700">Import Base Tiers</button>
                     </div>
                 </div>
 
@@ -349,7 +387,7 @@
                                 <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-4 py-3 rounded-lg flex items-center justify-between group transition-all ${state.selectedPersonId === p.id ? 'bg-indigo-500/20 border border-indigo-500/50' : 'hover:bg-zinc-800/50 border border-transparent'}">
                                     <div>
                                         <div class="font-semibold ${state.selectedPersonId === p.id ? 'text-indigo-300' : 'text-zinc-200'}">${p.name}</div>
-                                        <div class="text-[10px] tracking-widest uppercase text-zinc-500 mt-0.5">${p.seniority || 'Junior'}</div>
+                                        <div class="text-[10px] tracking-widest uppercase text-zinc-500 mt-0.5">${getSeniorityName(p.seniority, state)}</div>
                                     </div>
                                     <i data-lucide="chevron-right" class="w-4 h-4 ${state.selectedPersonId === p.id ? 'text-indigo-400' : 'text-zinc-600 opacity-0 group-hover:opacity-100'}"></i>
                                 </button>
@@ -383,9 +421,7 @@
                                     <label class="block text-sm font-semibold text-zinc-300 mb-2 uppercase tracking-wider">Seniority Level</label>
                                     <div class="flex gap-3 max-w-sm">
                                         <select id="editSeniority" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-sm outline-none text-white focus:border-indigo-500">
-                                            <option value="Junior" ${selPerson.seniority === 'Junior' ? 'selected' : ''}>Junior</option>
-                                            <option value="Mid" ${selPerson.seniority === 'Mid' ? 'selected' : ''}>Mid</option>
-                                            <option value="Senior" ${selPerson.seniority === 'Senior' ? 'selected' : ''}>Senior</option>
+                                            ${sortedSen.map(s => `<option value="${s.id}" ${selPerson.seniority === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
                                         </select>
                                         <button onclick="window.handleUpdateSeniority('${selPerson.id}', '${selPerson.name}')" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-lg text-sm transition-colors border border-zinc-600">Update</button>
                                     </div>
@@ -428,57 +464,41 @@
         }
 
         function ManpowerCalculatorView(state) {
-            // Calculator Engine
-            const roles = state.data.roles;
-            const shifts = state.data.shifts;
-            const personnel = state.data.personnel;
-            
-            // Tally Existing Personnel
-            const existingCount = { Senior: 0, Mid: 0, Junior: 0 };
-            personnel.forEach(p => {
+            const sortedSen = [...state.data.seniorities].sort((a,b) => a.order - b.order);
+            const existingCount = {};
+            sortedSen.forEach(s => existingCount[s.id] = 0);
+
+            state.data.personnel.forEach(p => {
                 if(p.seniority && existingCount[p.seniority] !== undefined) existingCount[p.seniority]++;
             });
 
-            // Calculate Required Math
-            // Assumed capacity based on 11h rest and 44h limit with 9.5h office blocks. 
-            // Simplified safe estimate: approx 15 duty hours achievable per week per person.
             const DUTY_HOURS_PER_PERSON_PER_WEEK = 15; 
-            
-            let reqCounts = { Senior: 0, Mid: 0, Junior: 0 };
-            let totalRoleHours = 0;
+            let reqCounts = {};
+            sortedSen.forEach(s => reqCounts[s.id] = 0);
 
-            roles.forEach(r => {
+            state.data.roles.forEach(r => {
                 let daysPerWeek = (r.is247 === true || r.is247 === 'TRUE') ? 7 : (r.days.split(',').filter(x=>x).length);
-                let roleShifts = shifts.filter(s => s.roleId === r.id);
+                let roleShifts = state.data.shifts.filter(s => s.roleId === r.id);
                 
                 roleShifts.forEach(s => {
-                    // Calc duration
                     let st = new Date(`2000-01-01T${s.start}`);
                     let et = new Date(`2000-01-01T${s.end}`);
                     if(et <= st) et.setDate(et.getDate() + 1);
                     let hrs = (et - st) / 3600000;
-                    
-                    // Standby discount (50% physical toll)
                     if (r.type === 'Standby') hrs *= 0.5;
 
                     let shiftReqs = {};
                     try{ shiftReqs = JSON.parse(s.reqs); }catch(e){}
 
-                    ['Senior', 'Mid', 'Junior'].forEach(lvl => {
-                        let count = parseInt(shiftReqs[lvl]) || 0;
+                    sortedSen.forEach(sen => {
+                        let count = parseInt(shiftReqs[sen.id]) || 0;
                         if(count > 0) {
                             let totalHrsPerWeek = hrs * count * daysPerWeek;
-                            totalRoleHours += totalHrsPerWeek;
-                            reqCounts[lvl] += (totalHrsPerWeek / DUTY_HOURS_PER_PERSON_PER_WEEK);
+                            reqCounts[sen.id] += (totalHrsPerWeek / DUTY_HOURS_PER_PERSON_PER_WEEK);
                         }
                     });
                 });
             });
-
-            // Ceiling requirements
-            reqCounts.Senior = Math.ceil(reqCounts.Senior);
-            reqCounts.Mid = Math.ceil(reqCounts.Mid);
-            reqCounts.Junior = Math.ceil(reqCounts.Junior);
 
             return `
             <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -488,15 +508,15 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    ${['Senior', 'Mid', 'Junior'].map(lvl => {
-                        const req = reqCounts[lvl];
-                        const act = existingCount[lvl];
+                    ${sortedSen.map(sen => {
+                        const req = Math.ceil(reqCounts[sen.id]);
+                        const act = existingCount[sen.id];
                         const diff = act - req;
                         const isDeficit = diff < 0;
                         return `
                         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
                             <h3 class="text-zinc-400 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
-                                <i data-lucide="user-check" class="w-4 h-4"></i> ${lvl} Tier
+                                <i data-lucide="user-check" class="w-4 h-4"></i> ${sen.name} Tier
                             </h3>
                             <div class="flex justify-between items-end mb-4">
                                 <div>
@@ -517,6 +537,7 @@
                         </div>
                         `;
                     }).join('')}
+                    ${sortedSen.length === 0 ? `<div class="text-zinc-500 italic p-6">No seniority tiers defined in Advanced Settings.</div>` : ''}
                 </div>
 
                 <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mt-6">
@@ -596,7 +617,7 @@
                                         <div class="text-xs text-zinc-500">${s.shift}</div>
                                     </td>
                                     <td class="px-6 py-3.5">
-                                        <span class="bg-zinc-800 text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-bold">${s.seniorityReq || 'Any'}</span>
+                                        <span class="bg-zinc-800 text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-bold">${s.seniorityReqName || 'Any'}</span>
                                     </td>
                                     <td class="px-6 py-3.5 text-xs font-mono text-zinc-400">
                                         ${formatTime(s.start)} - ${formatTime(s.end)}
@@ -653,6 +674,7 @@
             UI.render(); 
         };
 
+        // Settings / Migrations
         window.handleSetupDatabase = () => {
             if(confirm("WARNING: Are you sure you want to initialize the database schema? Do this only on an empty Google Sheet.")) {
                 UI.dispatch('setupDatabase');
@@ -665,9 +687,32 @@
             }
         };
 
+        // Seniorities
+        window.handleAddSeniorityTier = () => {
+            const name = document.getElementById('newSenName').value.trim();
+            const order = parseInt(document.getElementById('newSenOrder').value);
+            if(!name || isNaN(order)) return UI.showToast("Provide both Name and numerical Sort Order", "error");
+            UI.dispatch('addSeniorityTier', { name, order });
+        };
+
+        window.handleUpdateSeniorityTier = (id) => {
+            const name = document.getElementById(`senName_${id}`).value.trim();
+            const order = parseInt(document.getElementById(`senOrder_${id}`).value);
+            if(!name || isNaN(order)) return UI.showToast("Provide both Name and numerical Sort Order", "error");
+            UI.dispatch('updateSeniorityTier', { id, name, order });
+        };
+
+        window.handleDeleteSeniorityTier = (id) => {
+            if(confirm("Delete this tier? Personnel with this tier will be unassigned. Shift headcount required for this tier will be deleted permanently.")) {
+                UI.dispatch('deleteSeniorityTier', { id });
+            }
+        };
+
+        // Personnel Management
         window.handleAddPerson = () => {
             const val = document.getElementById('inpNewPerson').value.trim();
             const seniority = document.getElementById('inpNewSeniority').value;
+            if(!seniority) return UI.showToast("Setup Seniority Tiers in Advanced Settings first.", "error");
             if(val) UI.dispatch('addPerson', { personName: val, seniority: seniority });
         };
 
@@ -676,12 +721,14 @@
             UI.dispatch('updatePerson', { id, personName: name, seniority });
         };
 
-        window.handleBulkImport = () => {
+        window.handleBulkImport = (defaultSenId) => {
             const val = document.getElementById('inpBulkPerson').value;
             const names = val.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
-            if(names.length > 0) UI.dispatch('importPersonnel', { names });
+            if(!defaultSenId) return UI.showToast("Setup Seniority Tiers in Advanced Settings first.", "error");
+            if(names.length > 0) UI.dispatch('importPersonnel', { names, defaultSeniority: defaultSenId });
         };
 
+        // Roles & Shifts Config
         window.toggleDays = (isChecked) => {
             document.querySelectorAll('.role-day-cb').forEach(cb => {
                 cb.checked = isChecked;
@@ -691,6 +738,14 @@
 
         window.renderShiftInputs = () => {
             const num = parseInt(document.getElementById('inpNumShifts').value) || 1;
+            const sortedSen = [...UI.state.data.seniorities].sort((a,b) => a.order - b.order);
+            
+            if(sortedSen.length === 0) {
+                const container = document.getElementById('shiftRowsContainer');
+                if(container) container.innerHTML = '<div class="p-4 text-red-400 border border-red-500 bg-red-500/10 rounded-lg">Error: You must setup Seniority Tiers in Advanced Settings first.</div>';
+                return;
+            }
+
             let html = '';
             for(let i=1; i<=num; i++) {
                 html += `
@@ -711,20 +766,14 @@
                     </div>
                     
                     <div class="border-t border-zinc-800/50 pt-3">
-                        <label class="block text-[10px] font-bold text-zinc-500 mb-2 uppercase tracking-widest">Required Headcount Per Seniority (Zero means none needed)</label>
-                        <div class="flex gap-4">
+                        <label class="block text-[10px] font-bold text-zinc-500 mb-2 uppercase tracking-widest">Required Headcount Per Seniority</label>
+                        <div class="flex flex-wrap gap-4">
+                            ${sortedSen.map(sen => `
                             <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
-                                <span class="text-xs text-zinc-400 font-semibold w-12">Senior</span>
-                                <input type="number" id="sReqSenior_${i}" value="0" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
+                                <span class="text-xs text-zinc-400 font-semibold w-16 truncate">${sen.name}</span>
+                                <input type="number" id="sReq_${sen.id}_${i}" value="0" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center border-l border-zinc-800 pl-2">
                             </div>
-                            <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
-                                <span class="text-xs text-zinc-400 font-semibold w-12">Mid</span>
-                                <input type="number" id="sReqMid_${i}" value="0" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
-                            </div>
-                            <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
-                                <span class="text-xs text-zinc-400 font-semibold w-12">Junior</span>
-                                <input type="number" id="sReqJunior_${i}" value="1" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
-                            </div>
+                            `).join('')}
                         </div>
                     </div>
                 </div>
@@ -749,16 +798,20 @@
             const concurrentRoles = [];
             document.querySelectorAll('.role-concurrent-cb:checked').forEach(cb => concurrentRoles.push(cb.value));
             
+            const sortedSen = [...UI.state.data.seniorities].sort((a,b) => a.order - b.order);
             const num = parseInt(document.getElementById('inpNumShifts').value) || 1;
             const shifts = [];
+            
             for(let i=1; i<=num; i++) {
                 const sn = document.getElementById(`sName_${i}`).value.trim();
                 const st = document.getElementById(`sStart_${i}`).value;
                 const se = document.getElementById(`sEnd_${i}`).value;
                 
-                const rSen = parseInt(document.getElementById(`sReqSenior_${i}`).value) || 0;
-                const rMid = parseInt(document.getElementById(`sReqMid_${i}`).value) || 0;
-                const rJun = parseInt(document.getElementById(`sReqJunior_${i}`).value) || 0;
+                const shiftReqs = {};
+                sortedSen.forEach(sen => {
+                    const el = document.getElementById(`sReq_${sen.id}_${i}`);
+                    if(el) { shiftReqs[sen.id] = parseInt(el.value) || 0; }
+                });
 
                 if(!sn || !st || !se) return UI.showToast("Missing parameters in shift inputs.", "error");
                 
@@ -766,7 +819,7 @@
                     name: sn, 
                     start: st, 
                     end: se,
-                    reqs: { Senior: rSen, Mid: rMid, Junior: rJun }
+                    reqs: shiftReqs
                 });
             }
 
