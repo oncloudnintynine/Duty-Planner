@@ -12,6 +12,7 @@
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
         .tab-btn.active { background-color: rgba(99, 102, 241, 0.1); color: #818cf8; border-right: 3px solid #818cf8; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-indigo-500/30">
@@ -30,6 +31,8 @@
                 activeTab: 'setup',
                 loading: false,
                 lastMonth: '',
+                searchQuery: '',
+                selectedPersonId: null,
                 data: { personnel: [], roles: [], shifts: [], tags: [], schedule: [] },
                 toast: null
             },
@@ -53,6 +56,11 @@
                     if (json.status === 'success') {
                         this.state.data = json.data;
                         if (json.message) this.showToast(json.message, 'success');
+                        
+                        // If selected person was deleted, clear selection
+                        if (action === 'deletePerson' && payload.id === this.state.selectedPersonId) {
+                            this.state.selectedPersonId = null;
+                        }
                     } else {
                         this.showToast(json.message || "An error occurred", 'error');
                     }
@@ -63,7 +71,6 @@
                 this.state.loading = false;
                 this.render();
                 
-                // Re-hydrate local DOM dependencies after render
                 if(this.state.activeTab === 'setup') window.renderShiftInputs();
             },
 
@@ -91,6 +98,7 @@
                         ${state.activeTab === 'setup' ? SetupView(state) : ''}
                         ${state.activeTab === 'manage' ? ManageView(state) : ''}
                         ${state.activeTab === 'roster' ? RosterView(state) : ''}
+                        ${state.activeTab === 'calc' ? ManpowerCalculatorView(state) : ''}
                     </div>
                 </main>
             </div>
@@ -101,9 +109,10 @@
 
         function Sidebar(state) {
             const tabs = [
-                { id: 'setup', name: 'Base Setup', icon: 'database' },
-                { id: 'manage', name: 'Role Assignments', icon: 'users' },
-                { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' }
+                { id: 'setup', name: 'Topology & Setup', icon: 'database' },
+                { id: 'manage', name: 'Personnel & Assignments', icon: 'users' },
+                { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' },
+                { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' }
             ];
             return `
             <aside class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col z-10 shadow-2xl">
@@ -132,36 +141,24 @@
             <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div class="mb-2">
                     <h2 class="text-2xl font-bold text-white">Database Setup</h2>
-                    <p class="text-zinc-400 text-sm mt-1">Configure your personnel list and define daily role logic.</p>
-                </div>
-                
-                <!-- Personnel Section -->
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5 text-indigo-400"></i> Personnel Registry</h3>
-                    <div class="grid grid-cols-2 gap-8">
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-400 mb-2">Add Individual</label>
-                            <div class="flex gap-3">
-                                <input type="text" id="inpPersonName" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. John Doe">
-                                <button onclick="window.handleAddPerson()" class="bg-zinc-100 text-zinc-900 px-5 py-2 rounded-lg font-medium hover:bg-white transition-colors text-sm shadow">Add</button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-400 mb-2">Bulk Import List</label>
-                            <textarea id="inpBulkPerson" rows="3" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500 transition-colors mb-3 resize-none" placeholder="Paste names separated by commas or new lines..."></textarea>
-                            <button onclick="window.handleBulkImport()" class="w-full bg-zinc-800 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-700 transition-colors text-sm border border-zinc-700">Import Batch</button>
-                        </div>
-                    </div>
+                    <p class="text-zinc-400 text-sm mt-1">Configure your roles, concurrency matrix, and shift headcount requirements.</p>
                 </div>
 
-                <!-- Role Section -->
                 <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
                     <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="briefcase" class="w-5 h-5 text-indigo-400"></i> Role & Shift Logic</h3>
                     <div class="space-y-6">
-                        <div class="grid grid-cols-2 gap-6">
+                        
+                        <div class="grid grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-zinc-400 mb-2">Role Name</label>
                                 <input type="text" id="inpRoleName" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="e.g. Area Commander">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Role Type</label>
+                                <select id="inpRoleType" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500">
+                                    <option value="On-Site">On-Site (Requires Presence)</option>
+                                    <option value="Standby">Standby (Recall Only)</option>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-zinc-400 mb-2">Weekly Pattern</label>
@@ -184,18 +181,32 @@
                             </div>
                         </div>
 
+                        ${state.data.roles.length > 0 ? `
+                        <div class="p-4 bg-zinc-950/50 border border-zinc-800 rounded-lg">
+                            <label class="block text-sm font-medium text-zinc-400 mb-3">Concurrency Matrix</label>
+                            <p class="text-xs text-zinc-500 mb-3">Select other roles that this person can execute at the exact same time without violating the rest rules.</p>
+                            <div class="flex flex-wrap gap-3">
+                                ${state.data.roles.map(r => `
+                                    <label class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-md cursor-pointer hover:border-zinc-700">
+                                        <input type="checkbox" value="${r.id}" class="role-concurrent-cb w-3.5 h-3.5 rounded bg-zinc-900">
+                                        <span class="text-xs font-medium text-zinc-300">${r.name}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+
                         <div class="bg-zinc-950/50 rounded-lg p-5 border border-zinc-800/50 mt-6">
                             <div class="flex items-center justify-between mb-4 pb-4 border-b border-zinc-800/50">
                                 <div>
-                                    <label class="block text-sm font-medium text-zinc-200">Shift Topology</label>
-                                    <p class="text-xs text-zinc-500">Define how many shifts are needed per active day.</p>
+                                    <label class="block text-sm font-medium text-zinc-200">Shift Topology & Headcount</label>
+                                    <p class="text-xs text-zinc-500">Define shift times and exact number of personnel required per seniority.</p>
                                 </div>
                                 <select id="inpNumShifts" onchange="window.renderShiftInputs()" class="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-sm outline-none w-32 shadow-inner">
                                     <option value="1">1 Shift</option>
                                     <option value="2">2 Shifts</option>
                                     <option value="3">3 Shifts</option>
                                     <option value="4">4 Shifts</option>
-                                    <option value="5">5 Shifts</option>
                                 </select>
                             </div>
                             <div id="shiftRowsContainer" class="space-y-3">
@@ -203,114 +214,269 @@
                             </div>
                         </div>
 
-                        <div class="pt-2">
-                            <button onclick="window.handleAddRole()" class="w-full bg-zinc-100 text-zinc-900 px-4 py-3 rounded-lg font-bold hover:bg-white transition-all text-sm shadow-lg shadow-zinc-200/5">Add Role to Database</button>
+                        <div class="pt-2 flex justify-end">
+                            <button onclick="window.handleAddRole()" class="bg-zinc-100 text-zinc-900 px-8 py-3 rounded-lg font-bold hover:bg-white transition-all text-sm shadow-lg shadow-zinc-200/5">Add Role to Database</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Delete Roles Table view -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col shadow-xl">
+                    <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl flex justify-between items-center">
+                        <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Configured Roles</h3>
+                        <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.roles.length}</span>
+                    </div>
+                    <div class="max-h-[300px] overflow-y-auto">
+                        <table class="w-full text-left text-sm text-zinc-400">
+                            <tbody class="divide-y divide-zinc-800/50">
+                                ${state.data.roles.map(r => `
+                                <tr class="hover:bg-zinc-800/20 group transition-colors">
+                                    <td class="px-5 py-3">
+                                        <div class="font-medium text-zinc-200 flex items-center gap-2">
+                                            ${r.name} 
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full ${r.type === 'Standby' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${r.type}</span>
+                                        </div>
+                                        <div class="text-xs text-zinc-500 mt-1">${r.is247 === true || r.is247 === 'TRUE' ? '24/7 (Mon-Sun)' : r.days}</div>
+                                    </td>
+                                    <td class="px-5 py-3 text-right">
+                                        <button onclick="UI.dispatch('deleteRole', {id: '${r.id}'})" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </td>
+                                </tr>
+                                `).join('') || `<tr><td colspan="2" class="px-5 py-8 text-center text-zinc-600 text-xs italic">No roles established</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            `;
+        }
+
+        function ManageView(state) {
+            // Apply Fuzzy Search Filter
+            const searchQ = state.searchQuery.toLowerCase();
+            const filteredPersonnel = state.data.personnel.filter(p => p.name.toLowerCase().includes(searchQ));
+            
+            // Get Selected Person
+            const selPerson = state.data.personnel.find(p => p.id === state.selectedPersonId);
+            
+            return `
+            <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+                <div class="mb-2">
+                    <h2 class="text-2xl font-bold text-white">Personnel & Assignments</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Manage workforce, update seniority levels, and map capabilities.</p>
+                </div>
+
+                <!-- Add Personnel Quick Bar -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-4 items-center shadow-md">
+                    <div class="flex-1 flex gap-2">
+                        <input type="text" id="inpNewPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Add single person (e.g. Jane Doe)">
+                        <select id="inpNewSeniority" class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300">
+                            <option value="Junior">Junior</option>
+                            <option value="Mid">Mid</option>
+                            <option value="Senior">Senior</option>
+                        </select>
+                        <button onclick="window.handleAddPerson()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors text-sm">Add</button>
+                    </div>
+                    <div class="w-px h-8 bg-zinc-800"></div>
+                    <div class="flex-1 flex gap-2">
+                        <input type="text" id="inpBulkPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Bulk Import (comma separated)">
+                        <button onclick="window.handleBulkImport()" class="bg-zinc-800 text-zinc-300 px-5 py-2 rounded-lg font-medium hover:bg-zinc-700 transition-colors text-sm border border-zinc-700">Import Default (Junior)</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-6 h-[500px]">
+                    <!-- Left List: Fuzzy Search -->
+                    <div class="w-1/3 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col shadow-xl">
+                        <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl">
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-zinc-500"></i>
+                                <input type="text" placeholder="Search personnel..." value="${state.searchQuery}" onkeyup="UI.state.searchQuery = this.value; UI.render();" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:border-indigo-500 text-white">
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto hide-scroll p-2 space-y-1">
+                            ${filteredPersonnel.map(p => `
+                                <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-4 py-3 rounded-lg flex items-center justify-between group transition-all ${state.selectedPersonId === p.id ? 'bg-indigo-500/20 border border-indigo-500/50' : 'hover:bg-zinc-800/50 border border-transparent'}">
+                                    <div>
+                                        <div class="font-semibold ${state.selectedPersonId === p.id ? 'text-indigo-300' : 'text-zinc-200'}">${p.name}</div>
+                                        <div class="text-[10px] tracking-widest uppercase text-zinc-500 mt-0.5">${p.seniority || 'Junior'}</div>
+                                    </div>
+                                    <i data-lucide="chevron-right" class="w-4 h-4 ${state.selectedPersonId === p.id ? 'text-indigo-400' : 'text-zinc-600 opacity-0 group-hover:opacity-100'}"></i>
+                                </button>
+                            `).join('')}
+                            ${filteredPersonnel.length === 0 ? `<div class="p-6 text-center text-zinc-500 text-sm">No matches found.</div>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Right Detail Panel -->
+                    <div class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl flex flex-col relative overflow-hidden">
+                        ${!selPerson ? `
+                            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-30 pointer-events-none">
+                                <i data-lucide="user-square-2" class="w-20 h-20 mb-4 text-zinc-500"></i>
+                                <p class="text-lg text-zinc-400">Select personnel to manage assignments</p>
+                            </div>
+                        ` : `
+                            <div class="p-6 border-b border-zinc-800 bg-zinc-950 flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white mb-1">${selPerson.name}</h2>
+                                    <p class="text-xs text-zinc-500 font-mono">ID: ${selPerson.id.substring(0,8)}...</p>
+                                </div>
+                                <button onclick="UI.dispatch('deletePerson', {id: '${selPerson.id}'})" class="text-zinc-500 hover:bg-red-500/10 hover:text-red-400 px-3 py-1.5 rounded text-sm transition-colors flex items-center gap-2">
+                                    <i data-lucide="trash" class="w-4 h-4"></i> Remove Employee
+                                </button>
+                            </div>
+
+                            <div class="p-6 flex-1 overflow-y-auto space-y-8">
+                                
+                                <!-- Seniority Update -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-zinc-300 mb-2 uppercase tracking-wider">Seniority Level</label>
+                                    <div class="flex gap-3 max-w-sm">
+                                        <select id="editSeniority" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-sm outline-none text-white focus:border-indigo-500">
+                                            <option value="Junior" ${selPerson.seniority === 'Junior' ? 'selected' : ''}>Junior</option>
+                                            <option value="Mid" ${selPerson.seniority === 'Mid' ? 'selected' : ''}>Mid</option>
+                                            <option value="Senior" ${selPerson.seniority === 'Senior' ? 'selected' : ''}>Senior</option>
+                                        </select>
+                                        <button onclick="window.handleUpdateSeniority('${selPerson.id}', '${selPerson.name}')" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-lg text-sm transition-colors border border-zinc-600">Update</button>
+                                    </div>
+                                </div>
+
+                                <!-- Role Capability Tags -->
+                                <div>
+                                    <div class="flex justify-between items-end mb-3">
+                                        <label class="block text-sm font-semibold text-zinc-300 uppercase tracking-wider">Authorized Roles</label>
+                                    </div>
+                                    <div class="bg-zinc-950/50 border border-zinc-800/50 rounded-xl p-4 min-h-[100px] flex flex-wrap gap-2 items-start content-start">
+                                        ${state.data.tags.filter(t => t.personId === selPerson.id).map(t => {
+                                            const role = state.data.roles.find(r => r.id === t.roleId);
+                                            if(!role) return '';
+                                            return `
+                                            <div class="group inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold shadow-sm">
+                                                ${role.name}
+                                                <button onclick="UI.dispatch('deleteTag', {id: '${t.id}'})" class="w-5 h-5 rounded-full bg-indigo-500/20 hover:bg-red-500 flex items-center justify-center text-indigo-300 hover:text-white transition-colors">
+                                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                                </button>
+                                            </div>
+                                            `;
+                                        }).join('') || `<span class="text-zinc-600 text-sm italic w-full text-center mt-6">No roles assigned. They cannot be rostered.</span>`}
+                                    </div>
+                                    
+                                    <div class="mt-4 flex gap-3 max-w-md">
+                                        <select id="assignRoleSelect" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-sm outline-none text-white focus:border-indigo-500">
+                                            <option value="">-- Grant Capability --</option>
+                                            ${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+                                        </select>
+                                        <button onclick="window.handleAssign('${selPerson.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors">Grant</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `}
                     </div>
                 </div>
             </div>
             `;
         }
 
-        function ManageView(state) {
+        function ManpowerCalculatorView(state) {
+            // Calculator Engine
+            const roles = state.data.roles;
+            const shifts = state.data.shifts;
+            const personnel = state.data.personnel;
+            
+            // Tally Existing Personnel
+            const existingCount = { Senior: 0, Mid: 0, Junior: 0 };
+            personnel.forEach(p => {
+                if(p.seniority && existingCount[p.seniority] !== undefined) existingCount[p.seniority]++;
+            });
+
+            // Calculate Required Math
+            // Assumed capacity based on 11h rest and 44h limit with 9.5h office blocks. 
+            // Simplified safe estimate: approx 15 duty hours achievable per week per person.
+            const DUTY_HOURS_PER_PERSON_PER_WEEK = 15; 
+            
+            let reqCounts = { Senior: 0, Mid: 0, Junior: 0 };
+            let totalRoleHours = 0;
+
+            roles.forEach(r => {
+                let daysPerWeek = (r.is247 === true || r.is247 === 'TRUE') ? 7 : (r.days.split(',').filter(x=>x).length);
+                let roleShifts = shifts.filter(s => s.roleId === r.id);
+                
+                roleShifts.forEach(s => {
+                    // Calc duration
+                    let st = new Date(`2000-01-01T${s.start}`);
+                    let et = new Date(`2000-01-01T${s.end}`);
+                    if(et <= st) et.setDate(et.getDate() + 1);
+                    let hrs = (et - st) / 3600000;
+                    
+                    // Standby discount (50% physical toll)
+                    if (r.type === 'Standby') hrs *= 0.5;
+
+                    let shiftReqs = {};
+                    try{ shiftReqs = JSON.parse(s.reqs); }catch(e){}
+
+                    ['Senior', 'Mid', 'Junior'].forEach(lvl => {
+                        let count = parseInt(shiftReqs[lvl]) || 0;
+                        if(count > 0) {
+                            let totalHrsPerWeek = hrs * count * daysPerWeek;
+                            totalRoleHours += totalHrsPerWeek;
+                            reqCounts[lvl] += (totalHrsPerWeek / DUTY_HOURS_PER_PERSON_PER_WEEK);
+                        }
+                    });
+                });
+            });
+
+            // Ceiling requirements
+            reqCounts.Senior = Math.ceil(reqCounts.Senior);
+            reqCounts.Mid = Math.ceil(reqCounts.Mid);
+            reqCounts.Junior = Math.ceil(reqCounts.Junior);
+
             return `
-            <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div class="mb-2">
-                    <h2 class="text-2xl font-bold text-white">Role Assignments</h2>
-                    <p class="text-zinc-400 text-sm mt-1">Manage personnel capabilities and remove obsolete records.</p>
+            <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="mb-4">
+                    <h2 class="text-2xl font-bold text-white">Manpower Requirement Calculator</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Mathematical framework mapping shift topology to organizational hiring needs.</p>
                 </div>
 
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
-                   <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="link" class="w-5 h-5 text-indigo-400"></i> Map Person to Role</h3>
-                   <div class="flex gap-4">
-                       <select id="selPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none text-sm text-zinc-300">
-                           <option value="">-- Select Personnel --</option>
-                           ${state.data.personnel.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                       </select>
-                       <select id="selRole" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none text-sm text-zinc-300">
-                           <option value="">-- Select Target Role --</option>
-                           ${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
-                       </select>
-                       <button onclick="window.handleAssign()" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg font-medium hover:bg-indigo-500 transition-colors shadow">Authorize</button>
-                   </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${['Senior', 'Mid', 'Junior'].map(lvl => {
+                        const req = reqCounts[lvl];
+                        const act = existingCount[lvl];
+                        const diff = act - req;
+                        const isDeficit = diff < 0;
+                        return `
+                        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
+                            <h3 class="text-zinc-400 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i data-lucide="user-check" class="w-4 h-4"></i> ${lvl} Tier
+                            </h3>
+                            <div class="flex justify-between items-end mb-4">
+                                <div>
+                                    <div class="text-4xl font-bold text-white">${act}</div>
+                                    <div class="text-xs text-zinc-500 mt-1">Current Headcount</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-zinc-300">${req}</div>
+                                    <div class="text-xs text-zinc-500 mt-1">Required Min.</div>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-zinc-800/50">
+                                ${isDeficit 
+                                    ? `<div class="text-red-400 font-semibold text-sm flex items-center gap-1.5"><i data-lucide="trending-down" class="w-4 h-4"></i> Deficit of ${Math.abs(diff)} personnel</div>`
+                                    : `<div class="text-emerald-400 font-semibold text-sm flex items-center gap-1.5"><i data-lucide="trending-up" class="w-4 h-4"></i> Surplus of ${diff} personnel</div>`
+                                }
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
                 </div>
 
-                <!-- Split view tables -->
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col h-[400px] shadow-xl">
-                        <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl flex justify-between items-center">
-                            <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Personnel Database</h3>
-                            <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.personnel.length}</span>
-                        </div>
-                        <div class="flex-1 overflow-y-auto">
-                            <table class="w-full text-left text-sm text-zinc-400">
-                                <tbody class="divide-y divide-zinc-800/50">
-                                    ${state.data.personnel.map(p => `
-                                    <tr class="hover:bg-zinc-800/20 group transition-colors">
-                                        <td class="px-5 py-3 font-medium text-zinc-200">${p.name}</td>
-                                        <td class="px-5 py-3 text-right">
-                                            <button onclick="UI.dispatch('deletePerson', {id: '${p.id}'})" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    `).join('') || `<tr><td colspan="2" class="px-5 py-8 text-center text-zinc-600 text-xs italic">No personnel in database</td></tr>`}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col h-[400px] shadow-xl">
-                        <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl flex justify-between items-center">
-                            <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Defined Roles</h3>
-                            <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.roles.length}</span>
-                        </div>
-                        <div class="flex-1 overflow-y-auto">
-                            <table class="w-full text-left text-sm text-zinc-400">
-                                <tbody class="divide-y divide-zinc-800/50">
-                                    ${state.data.roles.map(r => `
-                                    <tr class="hover:bg-zinc-800/20 group transition-colors">
-                                        <td class="px-5 py-3">
-                                            <div class="font-medium text-zinc-200">${r.name}</div>
-                                            <div class="text-xs text-zinc-500 mt-0.5">${r.days}</div>
-                                        </td>
-                                        <td class="px-5 py-3 text-right">
-                                            <button onclick="UI.dispatch('deleteRole', {id: '${r.id}'})" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    `).join('') || `<tr><td colspan="2" class="px-5 py-8 text-center text-zinc-600 text-xs italic">No roles established</td></tr>`}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl mt-6">
-                    <div class="p-4 border-b border-zinc-800 bg-zinc-950 flex justify-between items-center">
-                        <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Active Assignments Registry</h3>
-                        <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.tags.length} Mapping(s)</span>
-                    </div>
-                    <div class="max-h-[300px] overflow-y-auto">
-                        <table class="w-full text-left text-sm text-zinc-400">
-                            <thead class="bg-zinc-900/50 text-zinc-500 text-xs uppercase sticky top-0 backdrop-blur-sm">
-                                <tr><th class="px-5 py-3">Personnel</th><th class="px-5 py-3">Assigned Role Capable</th><th class="px-5 py-3 text-right">Action</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-zinc-800/50">
-                                ${state.data.tags.map(t => {
-                                    const p = state.data.personnel.find(x => x.id === t.personId)?.name || '<span class="text-red-400 line-through">Deleted</span>';
-                                    const r = state.data.roles.find(x => x.id === t.roleId)?.name || '<span class="text-red-400 line-through">Deleted</span>';
-                                    return `
-                                    <tr class="hover:bg-zinc-800/20 transition-colors">
-                                        <td class="px-5 py-3 font-medium text-zinc-300">${p}</td>
-                                        <td class="px-5 py-3">
-                                            <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded text-xs font-semibold tracking-wide">${r}</span>
-                                        </td>
-                                        <td class="px-5 py-3 text-right">
-                                            <button onclick="UI.dispatch('deleteTag', {id: '${t.id}'})" class="text-zinc-500 hover:text-red-400 transition-colors"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    `;
-                                }).join('') || `<tr><td colspan="3" class="px-5 py-12 text-center text-zinc-600 text-sm italic">No assignments configured yet.</td></tr>`}
-                            </tbody>
-                        </table>
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mt-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">Algorithm Assumptions & Framework Rules</h3>
+                    <div class="text-sm text-zinc-400 space-y-3 font-medium leading-relaxed">
+                        <p class="flex gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0"></i> <b>Statutory Cap:</b> Personnel are strictly limited to a maximum of 44 working hours per week. This includes normal office hours.</p>
+                        <p class="flex gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0"></i> <b>Base Office Hours:</b> The model assumes standard office hours are Mon-Fri, 0800 HRS to 1730 HRS (9.5 elapsed hours). </p>
+                        <p class="flex gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0"></i> <b>Rest Intervals (11-Hour Rule):</b> A strict 11-hour rest block is mandated between shifts. If a rostered duty violates this rest block against an office day, the model automatically waives the office day (Off-In-Lieu) to preserve the rest rule, recovering hours for duty capacity.</p>
+                        <p class="flex gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0"></i> <b>Standby Depreciation:</b> Standby roles do not require physical presence and are calculated at a 50% physical toll index (1 hr shift = 0.5 hr working limit consumption).</p>
+                        <p class="flex gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0"></i> <b>Net Duty Capacity:</b> Factoring in standard breaks, leaves, and OILs, the algorithm estimates a safe usable capacity of <b>15 duty-hours per person per week</b> beyond standard operations.</p>
                     </div>
                 </div>
             </div>
@@ -345,7 +511,7 @@
                 <div class="mb-4">
                     <h2 class="text-2xl font-bold text-white">Heuristic Roster Engine</h2>
                     <p class="text-zinc-400 text-sm mt-1 flex items-center gap-2">
-                        <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i> Engine enforces strict 11-hour rest periods and prioritizes hour balance.
+                        <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i> Engine enforces strict 11-hour rest periods, 44hr weekly limits, and OIL waivers.
                     </p>
                 </div>
 
@@ -365,8 +531,8 @@
                             <thead class="bg-zinc-950 text-zinc-400 text-xs uppercase sticky top-0 z-10 border-b border-zinc-800">
                                 <tr>
                                     <th class="px-6 py-4 font-semibold tracking-wider">Date</th>
-                                    <th class="px-6 py-4 font-semibold tracking-wider">Role</th>
-                                    <th class="px-6 py-4 font-semibold tracking-wider">Shift Node</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Role & Shift Node</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Seniority Req</th>
                                     <th class="px-6 py-4 font-semibold tracking-wider">Time Window</th>
                                     <th class="px-6 py-4 font-semibold tracking-wider text-right">Assigned Personnel</th>
                                 </tr>
@@ -375,15 +541,20 @@
                                 ${scheduleRows.length > 0 ? scheduleRows.map((s, i) => `
                                 <tr class="hover:bg-zinc-800/30 transition-colors ${i % 2 === 0 ? 'bg-zinc-900/10' : ''}">
                                     <td class="px-6 py-3.5 font-medium text-zinc-300">${formatDate(s.date)}</td>
-                                    <td class="px-6 py-3.5 text-zinc-400">${s.role}</td>
-                                    <td class="px-6 py-3.5 text-zinc-400">${s.shift}</td>
-                                    <td class="px-6 py-3.5 text-xs font-mono text-zinc-500 bg-black/20 rounded px-2 mx-6 self-start w-fit">
+                                    <td class="px-6 py-3.5 text-zinc-400">
+                                        <div class="font-medium text-zinc-200">${s.role}</div>
+                                        <div class="text-xs text-zinc-500">${s.shift}</div>
+                                    </td>
+                                    <td class="px-6 py-3.5">
+                                        <span class="bg-zinc-800 text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-bold">${s.seniorityReq || 'Any'}</span>
+                                    </td>
+                                    <td class="px-6 py-3.5 text-xs font-mono text-zinc-400">
                                         ${formatTime(s.start)} - ${formatTime(s.end)}
                                     </td>
                                     <td class="px-6 py-3.5 text-right">
-                                        ${s.person === 'UNFILLED' 
+                                        ${s.personName === 'UNFILLED' 
                                             ? `<span class="inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Unfilled</span>`
-                                            : `<span class="font-semibold text-zinc-200">${s.person}</span>`
+                                            : `<span class="font-semibold text-zinc-200">${s.personName}</span>`
                                         }
                                     </td>
                                 </tr>
@@ -433,12 +604,19 @@
         };
 
         window.handleAddPerson = () => {
-            const val = document.getElementById('inpPersonName').value.trim();
-            if(val) UI.dispatch('addPerson', { personName: val });
+            const val = document.getElementById('inpNewPerson').value.trim();
+            const seniority = document.getElementById('inpNewSeniority').value;
+            if(val) UI.dispatch('addPerson', { personName: val, seniority: seniority });
+        };
+
+        window.handleUpdateSeniority = (id, name) => {
+            const seniority = document.getElementById('editSeniority').value;
+            UI.dispatch('updatePerson', { id, personName: name, seniority });
         };
 
         window.handleBulkImport = () => {
-            const names = document.getElementById('inpBulkPerson').value.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
+            const val = document.getElementById('inpBulkPerson').value;
+            const names = val.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
             if(names.length > 0) UI.dispatch('importPersonnel', { names });
         };
 
@@ -454,18 +632,38 @@
             let html = '';
             for(let i=1; i<=num; i++) {
                 html += `
-                <div class="flex gap-4 items-center bg-zinc-900 p-4 rounded-lg border border-zinc-800">
-                    <div class="flex-1">
-                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Shift ${i} Node</label>
-                        <input type="text" id="sName_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500" value="Shift ${i}">
+                <div class="bg-zinc-900 p-4 rounded-lg border border-zinc-800 space-y-4">
+                    <div class="flex gap-4 items-center">
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Shift Node Identifier</label>
+                            <input type="text" id="sName_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500" value="Shift ${i}">
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Start Time</label>
+                            <input type="time" id="sStart_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">End Time</label>
+                            <input type="time" id="sEnd_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
+                        </div>
                     </div>
-                    <div class="w-36">
-                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Start Time</label>
-                        <input type="time" id="sStart_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
-                    </div>
-                    <div class="w-36">
-                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">End Time</label>
-                        <input type="time" id="sEnd_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
+                    
+                    <div class="border-t border-zinc-800/50 pt-3">
+                        <label class="block text-[10px] font-bold text-zinc-500 mb-2 uppercase tracking-widest">Required Headcount Per Seniority (Zero means none needed)</label>
+                        <div class="flex gap-4">
+                            <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
+                                <span class="text-xs text-zinc-400 font-semibold w-12">Senior</span>
+                                <input type="number" id="sReqSenior_${i}" value="0" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
+                            </div>
+                            <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
+                                <span class="text-xs text-zinc-400 font-semibold w-12">Mid</span>
+                                <input type="number" id="sReqMid_${i}" value="0" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
+                            </div>
+                            <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-md">
+                                <span class="text-xs text-zinc-400 font-semibold w-12">Junior</span>
+                                <input type="number" id="sReqJunior_${i}" value="1" min="0" class="w-12 bg-transparent text-white text-sm outline-none text-center">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 `;
@@ -476,14 +674,18 @@
 
         window.handleAddRole = () => {
             const roleName = document.getElementById('inpRoleName').value.trim();
+            const roleType = document.getElementById('inpRoleType').value;
             const is247 = document.getElementById('inpIs247').checked;
-            const days = [];
             
+            const days = [];
             if (is247) {
                 ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => days.push(d));
             } else {
                 document.querySelectorAll('.role-day-cb:checked').forEach(cb => days.push(cb.value));
             }
+
+            const concurrentRoles = [];
+            document.querySelectorAll('.role-concurrent-cb:checked').forEach(cb => concurrentRoles.push(cb.value));
             
             const num = parseInt(document.getElementById('inpNumShifts').value) || 1;
             const shifts = [];
@@ -491,20 +693,30 @@
                 const sn = document.getElementById(`sName_${i}`).value.trim();
                 const st = document.getElementById(`sStart_${i}`).value;
                 const se = document.getElementById(`sEnd_${i}`).value;
+                
+                const rSen = parseInt(document.getElementById(`sReqSenior_${i}`).value) || 0;
+                const rMid = parseInt(document.getElementById(`sReqMid_${i}`).value) || 0;
+                const rJun = parseInt(document.getElementById(`sReqJunior_${i}`).value) || 0;
+
                 if(!sn || !st || !se) return UI.showToast("Missing parameters in shift inputs.", "error");
-                shifts.push({ name: sn, start: st, end: se });
+                
+                shifts.push({ 
+                    name: sn, 
+                    start: st, 
+                    end: se,
+                    reqs: { Senior: rSen, Mid: rMid, Junior: rJun }
+                });
             }
 
             if(!roleName) return UI.showToast("Role name is required.", "error");
             if(days.length === 0) return UI.showToast("Select at least one day constraint.", "error");
 
-            UI.dispatch('addRole', { roleName, is247, daysOfWeek: days, shifts });
+            UI.dispatch('addRole', { roleName, roleType, is247, daysOfWeek: days, concurrentRoles, shifts });
         };
 
-        window.handleAssign = () => {
-            const personId = document.getElementById('selPerson').value;
-            const roleId = document.getElementById('selRole').value;
-            if(!personId || !roleId) return UI.showToast("Select both a person and a role.", "error");
+        window.handleAssign = (personId) => {
+            const roleId = document.getElementById('assignRoleSelect').value;
+            if(!roleId) return UI.showToast("Select a role to grant.", "error");
             UI.dispatch('tagPerson', { personId, roleId });
         };
 
