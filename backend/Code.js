@@ -5,19 +5,18 @@ function getDbSheet() {
 }
 
 // ==========================================
-// 1. DATABASE SETUP 
+// 1. DATABASE SETUP & MIGRATION
 // ==========================================
+var setupConfig = {
+  "Roles": ["RoleID", "RoleName", "Is24_7", "DaysOfWeek", "RoleType", "ConcurrentRoles"],
+  "Shifts": ["ShiftID", "RoleID", "ShiftName", "StartTime", "EndTime", "SeniorityReqs"],
+  "Personnel": ["PersonID", "PersonName", "Seniority"],
+  "Tags": ["TagID", "PersonID", "RoleID"],
+  "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "SeniorityReq", "StartDateTime", "EndDateTime", "PersonName", "PersonID"]
+};
+
 function setupDatabase() {
   var ss = getDbSheet();
-  // Expanded Schema for Seniority, Types, Concurrency, and Reqs
-  var setupConfig = {
-    "Roles": ["RoleID", "RoleName", "Is24_7", "DaysOfWeek", "RoleType", "ConcurrentRoles"],
-    "Shifts": ["ShiftID", "RoleID", "ShiftName", "StartTime", "EndTime", "SeniorityReqs"],
-    "Personnel": ["PersonID", "PersonName", "Seniority"],
-    "Tags": ["TagID", "PersonID", "RoleID"],
-    "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "SeniorityReq", "StartDateTime", "EndDateTime", "PersonName", "PersonID"]
-  };
-
   var sheetNames = Object.keys(setupConfig);
   for (var i = 0; i < sheetNames.length; i++) {
     var sheetName = sheetNames[i];
@@ -26,10 +25,58 @@ function setupDatabase() {
     if (!sheet) { 
       sheet = ss.insertSheet(sheetName); 
     }
-    // Safe upgrade: Ensure headers match without deleting data if possible, 
-    // but overwrite row 1 to guarantee schema
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
     sheet.setFrozenRows(1);
+  }
+}
+
+// RUN THIS FUNCTION ONCE FROM THE EDITOR TO UPGRADE EXISTING DATA
+function runMigration() {
+  var ss = getDbSheet();
+  
+  // 1. Upgrade Personnel
+  var pSheet = ss.getSheetByName("Personnel");
+  if (pSheet) {
+     pSheet.getRange(1, 1, 1, setupConfig["Personnel"].length).setValues([setupConfig["Personnel"]]).setFontWeight("bold");
+     var pData = pSheet.getDataRange().getValues();
+     for (var i = 1; i < pData.length; i++) {
+       if (!pData[i][2]) pSheet.getRange(i + 1, 3).setValue("Junior");
+     }
+  }
+
+  // 2. Upgrade Roles
+  var rSheet = ss.getSheetByName("Roles");
+  if (rSheet) {
+     rSheet.getRange(1, 1, 1, setupConfig["Roles"].length).setValues([setupConfig["Roles"]]).setFontWeight("bold");
+     var rData = rSheet.getDataRange().getValues();
+     for (var j = 1; j < rData.length; j++) {
+       if (!rData[j][4]) rSheet.getRange(j + 1, 5).setValue("On-Site");
+       if (!rData[j][5]) rSheet.getRange(j + 1, 6).setValue("[]");
+     }
+  }
+
+  // 3. Upgrade Shifts
+  var sSheet = ss.getSheetByName("Shifts");
+  if (sSheet) {
+     sSheet.getRange(1, 1, 1, setupConfig["Shifts"].length).setValues([setupConfig["Shifts"]]).setFontWeight("bold");
+     var sData = sSheet.getDataRange().getValues();
+     for (var k = 1; k < sData.length; k++) {
+       if (!sData[k][5]) sSheet.getRange(k + 1, 6).setValue(JSON.stringify({Senior:0, Mid:0, Junior:1}));
+     }
+  }
+  
+  // 4. Upgrade Tags
+  var tSheet = ss.getSheetByName("Tags");
+  if (tSheet) {
+     tSheet.getRange(1, 1, 1, setupConfig["Tags"].length).setValues([setupConfig["Tags"]]).setFontWeight("bold");
+  }
+
+  // 5. Clear and Upgrade Schedule (Column formats shifted entirely, needs wipe)
+  var schSheet = ss.getSheetByName("Schedule");
+  if (schSheet) {
+     schSheet.clear();
+     schSheet.getRange(1, 1, 1, setupConfig["Schedule"].length).setValues([setupConfig["Schedule"]]).setFontWeight("bold");
+     schSheet.setFrozenRows(1);
   }
 }
 
