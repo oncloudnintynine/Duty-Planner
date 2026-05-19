@@ -3,289 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Company Duty Roster Planner</title>
+    <title>Advanced Duty Roster Planner</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 850px; margin: 0 auto; background: #f4f7f6; color: #333;}
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
-        h2 { margin-top: 0; color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; background: #f0f2f5; color: #333;}
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px;}
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; color: #495057;}
+        .tab-btn.active { background: #007bff; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;}
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"], input[type="time"], input[type="number"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
-        textarea { resize: vertical; }
-        .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
-        .checkbox-group label { display: flex; align-items: center; font-weight: normal; }
-        .checkbox-group input { margin-right: 5px; }
-        button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s;}
-        button:hover { background: #0056b3; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-success { background: #28a745; margin-bottom: 15px; }
-        .btn-success:hover { background: #218838; }
-        .btn-secondary { background: #6c757d; }
-        .btn-secondary:hover { background: #5a6268; }
-        .divider { margin: 25px 0; border: 0; border-top: 1px solid #ddd; }
+        input[type="text"], input[type="time"], input[type="month"], select, textarea, input[type="number"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;}
         
-        .shift-container { background: #f9f9f9; padding: 15px; border-radius: 4px; border: 1px solid #ddd; margin-top: 15px;}
-        .shift-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .shift-row input[type="text"] { flex: 1.5; }
-        .shift-row input[type="time"] { flex: 1; }
-        .duration-badge { flex: 0.8; font-size: 14px; background: #e2e3e5; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold;}
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        button:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; } .btn-danger:hover { background: #c82333; }
+        .btn-warning { background: #ffc107; color: #212529; } .btn-warning:hover { background: #e0a800; }
+        .btn-success { background: #28a745; } .btn-success:hover { background: #218838; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; font-weight: bold; color: #495057; }
+        .unfilled { color: #dc3545; font-weight: bold; }
+
+        /* Shifts Helper */
+        .shift-container { background: #f8f9fa; padding: 15px; border: 1px solid #ddd; margin-top: 10px; border-radius: 4px;}
+        .shift-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h1 style="text-align: center; color: #222;">Duty Roster Planner</h1>
+    <h1>Advanced Duty Roster Planner</h1>
 
-    <!-- 1. Add Personnel Section -->
-    <div class="card">
-        <h2>1. Add Personnel</h2>
-        
-        <!-- Single Add -->
-        <div class="form-group">
-            <label for="personName">Single Add</label>
-            <input type="text" id="personName" placeholder="Enter personnel's full name">
-        </div>
-        <button id="btnAddPerson" onclick="addPerson()">Add Single Person</button>
-
-        <hr class="divider">
-
-        <!-- Bulk Import -->
-        <div class="form-group">
-            <label for="bulkPersonnel">Bulk Import (Paste a list of names, one per line)</label>
-            <textarea id="bulkPersonnel" rows="5" placeholder="John Doe&#10;Jane Smith&#10;Bob Johnson"></textarea>
-        </div>
-        <button id="btnImportPersonnel" class="btn-secondary" onclick="importPersonnel()">Import List</button>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-setup')">1. Setup Data</button>
+        <button class="tab-btn" onclick="switchTab('tab-manage'); loadData()">2. Manage & Assign</button>
+        <button class="tab-btn" onclick="switchTab('tab-schedule'); loadData()">3. Generate Roster</button>
     </div>
 
-    <!-- 2. Add Role Section -->
-    <div class="card">
-        <h2>2. Add Role & Shifts</h2>
-        <div class="form-group">
-            <label for="roleName">Role Name</label>
-            <input type="text" id="roleName" placeholder="e.g., Security Guard, IT Support">
-        </div>
-        
-        <div class="form-group">
-            <label style="display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" id="is247" onchange="toggle247()" style="width: auto; margin-right: 10px; transform: scale(1.2);"> 
-                This role requires 24/7 manning
-            </label>
+    <!-- TAB 1: SETUP -->
+    <div id="tab-setup" class="tab-content active">
+        <div class="card">
+            <h2>Add Personnel</h2>
+            <div class="form-group"><label>Single Add</label><input type="text" id="personName" placeholder="Full Name"></div>
+            <button onclick="savePerson()">Add Person</button>
+            <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+            <div class="form-group"><label>Bulk Import</label><textarea id="bulkPersonnel" rows="3" placeholder="Paste names separated by new line..."></textarea></div>
+            <button class="btn-secondary" onclick="importPersonnel()">Import List</button>
         </div>
 
-        <div class="form-group">
-            <label>Days of the Week Required</label>
-            <div class="checkbox-group" id="daysGroup">
-                <label><input type="checkbox" name="days" value="Mon"> Mon</label>
-                <label><input type="checkbox" name="days" value="Tue"> Tue</label>
-                <label><input type="checkbox" name="days" value="Wed"> Wed</label>
-                <label><input type="checkbox" name="days" value="Thu"> Thu</label>
-                <label><input type="checkbox" name="days" value="Fri"> Fri</label>
-                <label><input type="checkbox" name="days" value="Sat"> Sat</label>
-                <label><input type="checkbox" name="days" value="Sun"> Sun</label>
-            </div>
-        </div>
-
-        <div class="shift-container">
+        <div class="card">
+            <h2>Add Role & Shifts</h2>
+            <input type="hidden" id="editRoleId"> <!-- Used for updating -->
+            <div class="form-group"><label>Role Name</label><input type="text" id="roleName" placeholder="e.g., Security Guard"></div>
+            <div class="form-group"><label><input type="checkbox" id="is247" onchange="toggle247()"> 24/7 Role (Mon-Sun)</label></div>
             <div class="form-group">
-                <label for="numShifts">Number of Shifts per Day</label>
-                <input type="number" id="numShifts" min="1" max="10" value="1" onchange="renderShiftInputs()">
+                <label>Days of the Week Required</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="days" value="Mon"> Mon</label>
+                    <label><input type="checkbox" name="days" value="Tue"> Tue</label>
+                    <label><input type="checkbox" name="days" value="Wed"> Wed</label>
+                    <label><input type="checkbox" name="days" value="Thu"> Thu</label>
+                    <label><input type="checkbox" name="days" value="Fri"> Fri</label>
+                    <label><input type="checkbox" name="days" value="Sat"> Sat</label>
+                    <label><input type="checkbox" name="days" value="Sun"> Sun</label>
+                </div>
             </div>
-            
-            <label>Shift Timings (Adjust to create overlaps for handovers)</label>
-            <div id="shiftRows"></div>
+            <div class="shift-container">
+                <div class="form-group"><label>Number of Shifts per Day</label><input type="number" id="numShifts" min="1" max="5" value="1" onchange="renderShiftInputs()"></div>
+                <div id="shiftRows"></div>
+            </div>
+            <button id="btnSaveRole" onclick="saveRole()" style="margin-top:15px;">Add Role</button>
         </div>
-
-        <button id="btnAddRole" onclick="addRole()" style="margin-top:15px;">Add Role</button>
     </div>
 
-    <!-- 3. Tag Personnel to Roles Section -->
-    <div class="card">
-        <h2>3. Assign Personnel to Roles</h2>
-        <button id="btnRefresh" class="btn-success" onclick="loadDropdowns()">Load / Refresh Dropdowns</button>
-        <div class="form-group">
-            <label for="personSelect">Select Personnel</label>
-            <select id="personSelect"><option value="">-- Please load dropdowns first --</option></select>
+    <!-- TAB 2: MANAGE & ASSIGN -->
+    <div id="tab-manage" class="tab-content">
+        <div class="card">
+            <h2>Assign Personnel to Roles</h2>
+            <div class="shift-row">
+                <select id="personSelect"><option value="">Loading...</option></select>
+                <select id="roleSelect"><option value="">Loading...</option></select>
+                <button class="btn-success" onclick="assignRole()">Assign</button>
+            </div>
+            <table id="tagsTable">
+                <thead><tr><th>Person</th><th>Role Assigned</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+            </table>
         </div>
-        <div class="form-group">
-            <label for="roleSelect">Select Role</label>
-            <select id="roleSelect"><option value="">-- Please load dropdowns first --</option></select>
+
+        <div class="card">
+            <h2>Database Manager</h2>
+            <h3>Personnel</h3>
+            <table id="personTable"><thead><tr><th>Name</th><th>Action</th></tr></thead><tbody></tbody></table>
+            
+            <h3 style="margin-top:30px;">Roles & Shifts</h3>
+            <table id="rolesTable"><thead><tr><th>Role</th><th>Days</th><th>Shifts</th><th>Action</th></tr></thead><tbody></tbody></table>
         </div>
-        <button id="btnAssign" onclick="tagPerson()">Assign Role</button>
+    </div>
+
+    <!-- TAB 3: GENERATE ROSTER -->
+    <div id="tab-schedule" class="tab-content">
+        <div class="card">
+            <h2>Automated Roster Generator</h2>
+            <p style="color:#666; font-size: 14px;">The engine assigns shifts fairly based on hours worked and enforces an 11-hour rest period between shifts. Slots that cannot be legally filled are marked as <b class="unfilled">UNFILLED</b>.</p>
+            <div class="form-group">
+                <label>Select Month & Year</label>
+                <input type="month" id="scheduleMonth">
+            </div>
+            <button class="btn-success" onclick="generateSchedule()">Generate Automated Roster</button>
+        </div>
+
+        <div class="card">
+            <h2>Duty Roster View</h2>
+            <div style="overflow-x: auto;">
+                <table id="scheduleTable">
+                    <thead><tr><th>Date</th><th>Role</th><th>Shift</th><th>Start Time</th><th>End Time</th><th>Assigned To</th></tr></thead>
+                    <tbody><tr><td colspan="6" style="text-align:center;">Select a month to view data</td></tr></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
+        // REPLACE WITH YOUR ACTUAL WEB APP URL
         const API_URL = "https://script.google.com/macros/s/AKfycbzBf4TJr_ZBPLZJEx4msOy-zXqSZkUU621FO7q3TrC0ml3ZKACComdBPLZ2ahw032v2/exec";
+        
+        let globalData = {}; // Cache database here
 
-        window.onload = () => renderShiftInputs();
+        // UI Initialization
+        window.onload = () => { renderShiftInputs(); }
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
 
         function toggle247() {
             const is247 = document.getElementById("is247").checked;
-            const checkboxes = document.querySelectorAll('input[name="days"]');
-            checkboxes.forEach(cb => {
-                cb.checked = is247;
-                cb.disabled = is247;
-            });
+            document.querySelectorAll('input[name="days"]').forEach(cb => { cb.checked = is247; cb.disabled = is247; });
         }
 
         function renderShiftInputs() {
-            const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
             const container = document.getElementById("shiftRows");
             container.innerHTML = "";
-
-            for(let i = 1; i <= numShifts; i++) {
-                container.innerHTML += `
-                    <div class="shift-row">
-                        <input type="text" id="shiftName_${i}" value="Shift ${i}" placeholder="Shift Name">
-                        <input type="time" id="shiftStart_${i}" onchange="calculateDuration(${i})">
-                        <input type="time" id="shiftEnd_${i}" onchange="calculateDuration(${i})">
-                        <div id="duration_${i}" class="duration-badge">0h 0m</div>
-                    </div>
-                `;
+            let num = parseInt(document.getElementById("numShifts").value) || 1;
+            for(let i=1; i<=num; i++) {
+                container.innerHTML += `<div class="shift-row"><input type="text" id="sName_${i}" value="Shift ${i}"><input type="time" id="sStart_${i}"><input type="time" id="sEnd_${i}"></div>`;
             }
         }
 
-        function calculateDuration(index) {
-            const start = document.getElementById(`shiftStart_${index}`).value;
-            const end = document.getElementById(`shiftEnd_${index}`).value;
-            const durationDisplay = document.getElementById(`duration_${index}`);
-
-            if(!start || !end) { durationDisplay.innerText = "0h 0m"; return; }
-
-            let [sH, sM] = start.split(':').map(Number);
-            let [eH, eM] = end.split(':').map(Number);
-            
-            let startMins = (sH * 60) + sM;
-            let endMins = (eH * 60) + eM;
-
-            if(endMins < startMins) endMins += (24 * 60); 
-
-            let diffMins = endMins - startMins;
-            let hrs = Math.floor(diffMins / 60);
-            let mins = diffMins % 60;
-
-            durationDisplay.innerText = `${hrs}h ${mins}m`;
-        }
-
-        async function sendPostRequest(payload, buttonId) {
-            const btn = document.getElementById(buttonId);
-            const originalText = btn.innerText;
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-
+        // Generic API Caller
+        async function apiCall(payload, loadingText = "Processing...") {
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                alert(result.message || "Success!");
-            } catch (error) {
-                alert("Error connecting to server.");
-                console.error(error);
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
+                if(loadingText) alert(loadingText);
+                const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'text/plain'}, body: JSON.stringify(payload) });
+                const result = await res.json();
+                if(result.message) alert(result.message);
+                if(document.getElementById('tab-manage').classList.contains('active')) loadData();
+                return result;
+            } catch (err) { alert("Server Error."); console.error(err); }
         }
 
-        // --- SINGLE ADD PERSONNEL ---
-        function addPerson() {
+        // ---- TAB 1: SETUP LOGIC ----
+        function savePerson() {
             const name = document.getElementById("personName").value.trim();
-            if(!name) return alert("Please enter a name.");
-            sendPostRequest({ action: "addPerson", personName: name }, "btnAddPerson").then(() => {
-                document.getElementById("personName").value = ''; 
-            });
+            if(!name) return;
+            apiCall({ action: "addPerson", personName: name }).then(() => document.getElementById("personName").value = "");
         }
-
-        // --- BULK IMPORT PERSONNEL ---
         function importPersonnel() {
-            const rawText = document.getElementById("bulkPersonnel").value;
-            if(!rawText.trim()) return alert("Please paste some names into the box first.");
-
-            // Split by new line or comma, remove spaces, and filter empty rows
-            const namesArray = rawText.split(/\r?\n|,/).map(n => n.trim()).filter(n => n.length > 0);
-            
-            if(namesArray.length === 0) return alert("No valid names found.");
-
-            sendPostRequest({ 
-                action: "importPersonnel", 
-                names: namesArray 
-            }, "btnImportPersonnel").then(() => {
-                document.getElementById("bulkPersonnel").value = '';
-            });
+            const names = document.getElementById("bulkPersonnel").value.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
+            if(names.length) apiCall({ action: "importPersonnel", names }).then(() => document.getElementById("bulkPersonnel").value = "");
         }
-
-        function addRole() {
+        function saveRole() {
             const roleName = document.getElementById("roleName").value.trim();
-            const is247 = document.getElementById("is247").checked;
-            const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
+            const editId = document.getElementById("editRoleId").value;
+            let days = []; document.querySelectorAll('input[name="days"]:checked').forEach(c => days.push(c.value));
             
-            let daysOfWeek = [];
-            document.querySelectorAll('input[name="days"]:checked').forEach(cb => daysOfWeek.push(cb.value));
-
-            if(!roleName) return alert("Please enter a role name.");
-            if(daysOfWeek.length === 0) return alert("Please select at least one day of the week.");
-
-            let shiftsData = [];
-            for(let i = 1; i <= numShifts; i++) {
-                const name = document.getElementById(`shiftName_${i}`).value;
-                const start = document.getElementById(`shiftStart_${i}`).value;
-                const end = document.getElementById(`shiftEnd_${i}`).value;
-                const duration = document.getElementById(`duration_${i}`).innerText;
-
-                if(!start || !end) return alert(`Please enter start and end times for Shift ${i}.`);
-                shiftsData.push({ name, start, end, duration });
+            let shifts = [];
+            let num = parseInt(document.getElementById("numShifts").value);
+            for(let i=1; i<=num; i++) {
+                let start = document.getElementById(`sStart_${i}`).value;
+                let end = document.getElementById(`sEnd_${i}`).value;
+                if(!start || !end) return alert("Fill all shift times.");
+                shifts.push({ name: document.getElementById(`sName_${i}`).value, start, end });
             }
+            if(!roleName || !days.length) return alert("Fill role name and days.");
 
-            const payload = { action: "addRole", roleName: roleName, is247: is247, daysOfWeek: daysOfWeek, shifts: shiftsData };
-
-            sendPostRequest(payload, "btnAddRole").then(() => {
-                document.getElementById("roleName").value = '';
-                document.getElementById("is247").checked = false;
-                document.getElementById("numShifts").value = 1;
-                toggle247();
-                renderShiftInputs();
+            let action = editId ? "updateRole" : "addRole";
+            apiCall({ action, id: editId, roleName, is247: document.getElementById("is247").checked, daysOfWeek: days, shifts }).then(()=>{
+                document.getElementById("roleName").value = "";
+                document.getElementById("editRoleId").value = "";
+                document.getElementById("btnSaveRole").innerText = "Add Role";
             });
         }
 
-        async function loadDropdowns() {
-            const btn = document.getElementById("btnRefresh");
-            btn.innerText = "Loading...";
-            btn.disabled = true;
-
+        // ---- TAB 2: DATA MANAGER LOGIC ----
+        async function loadData() {
             try {
-                const pRes = await fetch(API_URL + "?action=getPersonnel");
-                const personnel = await pRes.json();
-                const personSelect = document.getElementById("personSelect");
-                personSelect.innerHTML = '<option value="">-- Select Person --</option>';
-                personnel.forEach(p => personSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-
-                const rRes = await fetch(API_URL + "?action=getRoles");
-                const roles = await rRes.json();
-                const roleSelect = document.getElementById("roleSelect");
-                roleSelect.innerHTML = '<option value="">-- Select Role --</option>';
-                roles.forEach(r => roleSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`);
-
-                btn.innerText = "Dropdowns Loaded Successfully!";
-                setTimeout(() => { btn.innerText = "Load / Refresh Dropdowns"; }, 3000);
-            } catch (error) {
-                alert("Failed to load dropdowns.");
-                console.error(error);
-                btn.innerText = "Load / Refresh Dropdowns";
-            } finally {
-                btn.disabled = false;
-            }
+                const res = await fetch(API_URL + "?action=getAllData");
+                globalData = await res.json();
+                populateManagerTables();
+                populateDropdowns();
+            } catch(e) { console.error("Failed loading data."); }
         }
 
-        function tagPerson() {
-            const personId = document.getElementById("personSelect").value;
-            const roleId = document.getElementById("roleSelect").value;
-            if(!personId || !roleId) return alert("Please select both a person and a role.");
+        function populateManagerTables() {
+            // Personnel Table
+            document.querySelector("#personTable tbody").innerHTML = globalData.personnel.map(p => 
+                `<tr><td>${p.name}</td><td>
+                <button class="btn-danger" onclick="apiCall({action:'deletePerson', id:'${p.id}'})">Delete</button>
+                </td></tr>`).join("");
+            
+            // Roles Table
+            document.querySelector("#rolesTable tbody").innerHTML = globalData.roles.map(r => {
+                let rShifts = globalData.shifts.filter(s => s.roleId === r.id).map(s => `${s.name} (${s.start}-${s.end})`).join("<br>");
+                return `<tr><td>${r.name}</td><td>${r.days}</td><td>${rShifts}</td><td>
+                    <button class="btn-danger" onclick="apiCall({action:'deleteRole', id:'${r.id}'})">Delete</button>
+                </td></tr>`;
+            }).join("");
 
-            sendPostRequest({ action: "tagPerson", personId: personId, roleId: roleId }, "btnAssign");
-            document.getElementById("personSelect").value = "";
-            document.getElementById("roleSelect").value = "";
+            // Assignments/Tags Table
+            document.querySelector("#tagsTable tbody").innerHTML = globalData.tags.map(t => {
+                let p = globalData.personnel.find(x => x.id === t.personId)?.name || "Unknown";
+                let r = globalData.roles.find(x => x.id === t.roleId)?.name || "Unknown";
+                return `<tr><td>${p}</td><td>${r}</td><td>
+                    <button class="btn-danger" onclick="apiCall({action:'deleteTag', id:'${t.id}'})">Remove</button>
+                </td></tr>`;
+            }).join("");
         }
+
+        function populateDropdowns() {
+            let pSel = document.getElementById("personSelect"); pSel.innerHTML = "<option value=''>Select Person</option>";
+            globalData.personnel.forEach(p => pSel.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+            let rSel = document.getElementById("roleSelect"); rSel.innerHTML = "<option value=''>Select Role</option>";
+            globalData.roles.forEach(r => rSel.innerHTML += `<option value="${r.id}">${r.name}</option>`);
+        }
+
+        function assignRole() {
+            let pId = document.getElementById("personSelect").value;
+            let rId = document.getElementById("roleSelect").value;
+            if(pId && rId) apiCall({ action: "tagPerson", personId: pId, roleId: rId });
+        }
+
+        // ---- TAB 3: SCHEDULING LOGIC ----
+        function generateSchedule() {
+            let ym = document.getElementById("scheduleMonth").value; // Format: YYYY-MM
+            if(!ym) return alert("Please select a month and year.");
+            let [yr, mo] = ym.split('-');
+            
+            apiCall({ action: "generateSchedule", year: parseInt(yr), month: parseInt(mo) }, "Generating schedule. This may take 10-20 seconds...").then(() => {
+                loadData().then(displaySchedule); // Refresh cache and display
+            });
+        }
+
+        function displaySchedule() {
+            let ym = document.getElementById("scheduleMonth").value;
+            let filtered = globalData.schedule.filter(s => s.yearMonth === ym);
+            let tbody = document.querySelector("#scheduleTable tbody");
+            if(!filtered.length) { tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No schedule found. Generate one first.</td></tr>"; return; }
+            
+            tbody.innerHTML = filtered.map(s => {
+                let rowClass = s.person === "UNFILLED" ? "class='unfilled'" : "";
+                return `<tr>
+                    <td>${s.date}</td><td>${s.role}</td><td>${s.shift}</td>
+                    <td>${s.start.split(', ')[1]}</td><td>${s.end.split(', ')[1]}</td>
+                    <td ${rowClass}>${s.person}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        // Event Listener to show schedule when month changes manually
+        document.getElementById("scheduleMonth").addEventListener('change', displaySchedule);
     </script>
 </body>
 </html>
