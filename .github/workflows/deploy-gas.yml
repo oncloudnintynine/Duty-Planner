@@ -1,0 +1,39 @@
+name: Deploy to Google Apps Script
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**' # Only trigger when files in backend/ are changed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Clasp
+        run: npm install -g @google/clasp
+
+      - name: Authenticate Clasp
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          echo "$CLASPRC_JSON" > ~/.clasprc.json
+
+      - name: Create .clasp.json
+        run: |
+          echo '{ "scriptId": "${{ secrets.SCRIPT_ID }}", "rootDir": "backend" }' > .clasp.json
+
+      - name: Push Code to GAS
+        run: clasp push -f
+
+      - name: Update Existing Web App Deployment
+        run: clasp deploy -i ${{ secrets.DEPLOYMENT_ID }} -d "Auto-deployed via GitHub Actions - Commit ${{ github.sha }}"
