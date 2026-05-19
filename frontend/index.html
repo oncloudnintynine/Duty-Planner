@@ -10,7 +10,8 @@
         h2 { margin-top: 0; color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"], input[type="time"], input[type="number"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
+        input[type="text"], input[type="time"], input[type="number"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
+        textarea { resize: vertical; }
         .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
         .checkbox-group label { display: flex; align-items: center; font-weight: normal; }
         .checkbox-group input { margin-right: 5px; }
@@ -19,8 +20,10 @@
         button:disabled { background: #ccc; cursor: not-allowed; }
         .btn-success { background: #28a745; margin-bottom: 15px; }
         .btn-success:hover { background: #218838; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; }
+        .divider { margin: 25px 0; border: 0; border-top: 1px solid #ddd; }
         
-        /* Shift Input Styles */
         .shift-container { background: #f9f9f9; padding: 15px; border-radius: 4px; border: 1px solid #ddd; margin-top: 15px;}
         .shift-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
         .shift-row input[type="text"] { flex: 1.5; }
@@ -35,11 +38,22 @@
     <!-- 1. Add Personnel Section -->
     <div class="card">
         <h2>1. Add Personnel</h2>
+        
+        <!-- Single Add -->
         <div class="form-group">
-            <label for="personName">Full Name</label>
+            <label for="personName">Single Add</label>
             <input type="text" id="personName" placeholder="Enter personnel's full name">
         </div>
-        <button id="btnAddPerson" onclick="addPerson()">Add Person</button>
+        <button id="btnAddPerson" onclick="addPerson()">Add Single Person</button>
+
+        <hr class="divider">
+
+        <!-- Bulk Import -->
+        <div class="form-group">
+            <label for="bulkPersonnel">Bulk Import (Paste a list of names, one per line)</label>
+            <textarea id="bulkPersonnel" rows="5" placeholder="John Doe&#10;Jane Smith&#10;Bob Johnson"></textarea>
+        </div>
+        <button id="btnImportPersonnel" class="btn-secondary" onclick="importPersonnel()">Import List</button>
     </div>
 
     <!-- 2. Add Role Section -->
@@ -77,9 +91,7 @@
             </div>
             
             <label>Shift Timings (Adjust to create overlaps for handovers)</label>
-            <div id="shiftRows">
-                <!-- Shift rows injected here by JS -->
-            </div>
+            <div id="shiftRows"></div>
         </div>
 
         <button id="btnAddRole" onclick="addRole()" style="margin-top:15px;">Add Role</button>
@@ -101,28 +113,19 @@
     </div>
 
     <script>
-        // Your existing App Script Web App URL
         const API_URL = "https://script.google.com/macros/s/AKfycbzBf4TJr_ZBPLZJEx4msOy-zXqSZkUU621FO7q3TrC0ml3ZKACComdBPLZ2ahw032v2/exec";
 
-        // Initialize shift inputs on load
         window.onload = () => renderShiftInputs();
 
-        // Toggles 24/7 setting (locks days to Mon-Sun)
         function toggle247() {
             const is247 = document.getElementById("is247").checked;
             const checkboxes = document.querySelectorAll('input[name="days"]');
             checkboxes.forEach(cb => {
-                if(is247) {
-                    cb.checked = true;
-                    cb.disabled = true;
-                } else {
-                    cb.checked = false;
-                    cb.disabled = false;
-                }
+                cb.checked = is247;
+                cb.disabled = is247;
             });
         }
 
-        // Generates dynamic shift input rows
         function renderShiftInputs() {
             const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
             const container = document.getElementById("shiftRows");
@@ -140,16 +143,12 @@
             }
         }
 
-        // Calculates shift duration (handles overnight shifts past midnight automatically)
         function calculateDuration(index) {
             const start = document.getElementById(`shiftStart_${index}`).value;
             const end = document.getElementById(`shiftEnd_${index}`).value;
             const durationDisplay = document.getElementById(`duration_${index}`);
 
-            if(!start || !end) {
-                durationDisplay.innerText = "0h 0m";
-                return;
-            }
+            if(!start || !end) { durationDisplay.innerText = "0h 0m"; return; }
 
             let [sH, sM] = start.split(':').map(Number);
             let [eH, eM] = end.split(':').map(Number);
@@ -157,10 +156,7 @@
             let startMins = (sH * 60) + sM;
             let endMins = (eH * 60) + eM;
 
-            // If end time is less than start time, it means the shift crossed midnight into the next day
-            if(endMins < startMins) {
-                endMins += (24 * 60); 
-            }
+            if(endMins < startMins) endMins += (24 * 60); 
 
             let diffMins = endMins - startMins;
             let hrs = Math.floor(diffMins / 60);
@@ -169,7 +165,6 @@
             durationDisplay.innerText = `${hrs}h ${mins}m`;
         }
 
-        // Generic function to send POST requests
         async function sendPostRequest(payload, buttonId) {
             const btn = document.getElementById(buttonId);
             const originalText = btn.innerText;
@@ -185,7 +180,7 @@
                 const result = await response.json();
                 alert(result.message || "Success!");
             } catch (error) {
-                alert("Error connecting to server. Please check console.");
+                alert("Error connecting to server.");
                 console.error(error);
             } finally {
                 btn.innerText = originalText;
@@ -193,28 +188,44 @@
             }
         }
 
-        // 1. Add Person
+        // --- SINGLE ADD PERSONNEL ---
         function addPerson() {
             const name = document.getElementById("personName").value.trim();
             if(!name) return alert("Please enter a name.");
-            sendPostRequest({ action: "addPerson", personName: name }, "btnAddPerson");
-            document.getElementById("personName").value = ''; 
+            sendPostRequest({ action: "addPerson", personName: name }, "btnAddPerson").then(() => {
+                document.getElementById("personName").value = ''; 
+            });
         }
 
-        // 2. Add Role & Shifts
+        // --- BULK IMPORT PERSONNEL ---
+        function importPersonnel() {
+            const rawText = document.getElementById("bulkPersonnel").value;
+            if(!rawText.trim()) return alert("Please paste some names into the box first.");
+
+            // Split by new line or comma, remove spaces, and filter empty rows
+            const namesArray = rawText.split(/\r?\n|,/).map(n => n.trim()).filter(n => n.length > 0);
+            
+            if(namesArray.length === 0) return alert("No valid names found.");
+
+            sendPostRequest({ 
+                action: "importPersonnel", 
+                names: namesArray 
+            }, "btnImportPersonnel").then(() => {
+                document.getElementById("bulkPersonnel").value = '';
+            });
+        }
+
         function addRole() {
             const roleName = document.getElementById("roleName").value.trim();
             const is247 = document.getElementById("is247").checked;
             const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
             
-            // Get Days
             let daysOfWeek = [];
             document.querySelectorAll('input[name="days"]:checked').forEach(cb => daysOfWeek.push(cb.value));
 
             if(!roleName) return alert("Please enter a role name.");
             if(daysOfWeek.length === 0) return alert("Please select at least one day of the week.");
 
-            // Gather all shifts
             let shiftsData = [];
             for(let i = 1; i <= numShifts; i++) {
                 const name = document.getElementById(`shiftName_${i}`).value;
@@ -223,20 +234,12 @@
                 const duration = document.getElementById(`duration_${i}`).innerText;
 
                 if(!start || !end) return alert(`Please enter start and end times for Shift ${i}.`);
-                
                 shiftsData.push({ name, start, end, duration });
             }
 
-            const payload = {
-                action: "addRole",
-                roleName: roleName,
-                is247: is247,
-                daysOfWeek: daysOfWeek,
-                shifts: shiftsData
-            };
+            const payload = { action: "addRole", roleName: roleName, is247: is247, daysOfWeek: daysOfWeek, shifts: shiftsData };
 
             sendPostRequest(payload, "btnAddRole").then(() => {
-                // Clear UI
                 document.getElementById("roleName").value = '';
                 document.getElementById("is247").checked = false;
                 document.getElementById("numShifts").value = 1;
@@ -245,7 +248,6 @@
             });
         }
 
-        // 3. Load Dropdowns for Assignment
         async function loadDropdowns() {
             const btn = document.getElementById("btnRefresh");
             btn.innerText = "Loading...";
@@ -275,14 +277,12 @@
             }
         }
 
-        // 4. Tag Person to Role
         function tagPerson() {
             const personId = document.getElementById("personSelect").value;
             const roleId = document.getElementById("roleSelect").value;
             if(!personId || !roleId) return alert("Please select both a person and a role.");
 
             sendPostRequest({ action: "tagPerson", personId: personId, roleId: roleId }, "btnAssign");
-            
             document.getElementById("personSelect").value = "";
             document.getElementById("roleSelect").value = "";
         }
