@@ -15,7 +15,11 @@ function setupDatabase() {
     "Schedule": ["ScheduleID", "YearMonth", "Date", "RoleName", "ShiftName", "StartDateTime", "EndDateTime", "PersonName"]
   };
 
-  for (const [sheetName, headers] of Object.entries(setupConfig)) {
+  // Fixed: Avoided for...of destructuring to bypass Google Apps Script upload syntax bug
+  const sheetNames = Object.keys(setupConfig);
+  for (let i = 0; i < sheetNames.length; i++) {
+    let sheetName = sheetNames[i];
+    let headers = setupConfig[sheetName];
     let sheet = ss.getSheetByName(sheetName);
     if (!sheet) { sheet = ss.insertSheet(sheetName); }
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
@@ -103,6 +107,17 @@ function handlePerson(data) {
   }
 }
 
+// Fixed: Added missing importPersonnel function
+function importPersonnel(data) {
+  const sheet = getDbSheet().getSheetByName("Personnel");
+  if (!data.names || data.names.length === 0) return { message: "No names provided." };
+  
+  data.names.forEach(name => {
+    sheet.appendRow([Utilities.getUuid(), name]);
+  });
+  return { message: "Imported " + data.names.length + " personnel successfully." };
+}
+
 function handleRole(data) {
   const rSheet = getDbSheet().getSheetByName("Roles");
   const sSheet = getDbSheet().getSheetByName("Shifts");
@@ -172,65 +187,4 @@ function generateSchedule(year, month) {
         let roleShifts = shifts.filter(s => s.roleId === role.id);
         
         roleShifts.forEach(shift => {
-          let startDT = new Date(`${dateString}T${shift.start}:00`);
-          let endDT = new Date(`${dateString}T${shift.end}:00`);
-          if (endDT <= startDT) endDT.setDate(endDT.getDate() + 1); // Handles crossing midnight
-          
-          allSlots.push({
-            roleId: role.id, roleName: role.name, shiftName: shift.name, dateString: dateString,
-            startDT: startDT.getTime(), endDT: endDT.getTime(), durationMins: (endDT - startDT) / 60000
-          });
-        });
-      }
-    });
-  }
-
-  // Sort chronologically
-  allSlots.sort((a, b) => a.startDT - b.startDT);
-
-  // 2. Assign Personnel (Greedy with Workload balancing & Rest constraints)
-  const REQUIRED_REST_MS = 11 * 60 * 60 * 1000; // 11 hours mandatory rest
-  let scheduleRows = [];
-
-  allSlots.forEach(slot => {
-    // Find eligible people tagged to this role
-    let eligibleTagIds = tags.filter(t => t.roleId === slot.roleId).map(t => t.personId);
-    let candidates = eligibleTagIds.map(id => personMap[id]).filter(p => p !== undefined);
-
-    // Filter by availability (11-hour rest rule and overlaps)
-    let available = candidates.filter(person => {
-      for (let s of person.shifts) {
-        // Overlap or insufficient rest check
-        if (slot.startDT < s.endDT + REQUIRED_REST_MS && slot.endDT > s.startDT - REQUIRED_REST_MS) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    let assignedName = "UNFILLED";
-
-    if (available.length > 0) {
-      // Sort by fewest hours worked (Fairness)
-      available.sort((a, b) => a.totalMinutes - b.totalMinutes);
-      let selectedPerson = available[0];
-      
-      // Assign
-      assignedName = selectedPerson.name;
-      selectedPerson.shifts.push({ startDT: slot.startDT, endDT: slot.endDT });
-      selectedPerson.totalMinutes += slot.durationMins;
-    }
-
-    scheduleRows.push([
-      Utilities.getUuid(), targetYM, slot.dateString, slot.roleName, slot.shiftName, 
-      new Date(slot.startDT).toLocaleString(), new Date(slot.endDT).toLocaleString(), assignedName
-    ]);
-  });
-
-  // 3. Write to Sheet
-  if(scheduleRows.length > 0) {
-    scheduleSheet.getRange(scheduleSheet.getLastRow() + 1, 1, scheduleRows.length, scheduleRows[0].length).setValues(scheduleRows);
-  }
-
-  return { message: `Roster generated for ${targetYM}. Total slots: ${scheduleRows.length}` };
-}
+          let startDT = new Date(`${dateString}T${shift.start}:0
