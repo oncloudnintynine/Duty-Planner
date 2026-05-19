@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Company Duty Roster Planner</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background: #f4f7f6; color: #333;}
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 850px; margin: 0 auto; background: #f4f7f6; color: #333;}
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
         h2 { margin-top: 0; color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"], input[type="time"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
+        input[type="text"], input[type="time"], input[type="number"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
         .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
         .checkbox-group label { display: flex; align-items: center; font-weight: normal; }
         .checkbox-group input { margin-right: 5px; }
@@ -19,7 +19,13 @@
         button:disabled { background: #ccc; cursor: not-allowed; }
         .btn-success { background: #28a745; margin-bottom: 15px; }
         .btn-success:hover { background: #218838; }
-        #timeSettings { margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px; border: 1px solid #eee; }
+        
+        /* Shift Input Styles */
+        .shift-container { background: #f9f9f9; padding: 15px; border-radius: 4px; border: 1px solid #ddd; margin-top: 15px;}
+        .shift-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .shift-row input[type="text"] { flex: 1.5; }
+        .shift-row input[type="time"] { flex: 1; }
+        .duration-badge { flex: 0.8; font-size: 14px; background: #e2e3e5; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -38,7 +44,7 @@
 
     <!-- 2. Add Role Section -->
     <div class="card">
-        <h2>2. Add Role</h2>
+        <h2>2. Add Role & Shifts</h2>
         <div class="form-group">
             <label for="roleName">Role Name</label>
             <input type="text" id="roleName" placeholder="e.g., Security Guard, IT Support">
@@ -46,34 +52,37 @@
         
         <div class="form-group">
             <label style="display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" id="is247" onchange="toggleTimeSettings()" style="width: auto; margin-right: 10px; transform: scale(1.2);"> 
+                <input type="checkbox" id="is247" onchange="toggle247()" style="width: auto; margin-right: 10px; transform: scale(1.2);"> 
                 This role requires 24/7 manning
             </label>
         </div>
 
-        <div id="timeSettings">
-            <div class="form-group">
-                <label for="startTime">Start Time</label>
-                <input type="time" id="startTime">
-            </div>
-            <div class="form-group">
-                <label for="endTime">End Time</label>
-                <input type="time" id="endTime">
-            </div>
-            <div class="form-group">
-                <label>Days of the Week Required</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="days" value="Mon"> Mon</label>
-                    <label><input type="checkbox" name="days" value="Tue"> Tue</label>
-                    <label><input type="checkbox" name="days" value="Wed"> Wed</label>
-                    <label><input type="checkbox" name="days" value="Thu"> Thu</label>
-                    <label><input type="checkbox" name="days" value="Fri"> Fri</label>
-                    <label><input type="checkbox" name="days" value="Sat"> Sat</label>
-                    <label><input type="checkbox" name="days" value="Sun"> Sun</label>
-                </div>
+        <div class="form-group">
+            <label>Days of the Week Required</label>
+            <div class="checkbox-group" id="daysGroup">
+                <label><input type="checkbox" name="days" value="Mon"> Mon</label>
+                <label><input type="checkbox" name="days" value="Tue"> Tue</label>
+                <label><input type="checkbox" name="days" value="Wed"> Wed</label>
+                <label><input type="checkbox" name="days" value="Thu"> Thu</label>
+                <label><input type="checkbox" name="days" value="Fri"> Fri</label>
+                <label><input type="checkbox" name="days" value="Sat"> Sat</label>
+                <label><input type="checkbox" name="days" value="Sun"> Sun</label>
             </div>
         </div>
-        <button id="btnAddRole" onclick="addRole()">Add Role</button>
+
+        <div class="shift-container">
+            <div class="form-group">
+                <label for="numShifts">Number of Shifts per Day</label>
+                <input type="number" id="numShifts" min="1" max="10" value="1" onchange="renderShiftInputs()">
+            </div>
+            
+            <label>Shift Timings (Adjust to create overlaps for handovers)</label>
+            <div id="shiftRows">
+                <!-- Shift rows injected here by JS -->
+            </div>
+        </div>
+
+        <button id="btnAddRole" onclick="addRole()" style="margin-top:15px;">Add Role</button>
     </div>
 
     <!-- 3. Tag Personnel to Roles Section -->
@@ -92,13 +101,72 @@
     </div>
 
     <script>
-        // Your specific Standalone Google Apps Script Web App URL
+        // Your existing App Script Web App URL
         const API_URL = "https://script.google.com/macros/s/AKfycbzBf4TJr_ZBPLZJEx4msOy-zXqSZkUU621FO7q3TrC0ml3ZKACComdBPLZ2ahw032v2/exec";
 
-        // Toggles the start/end time and days visibility if 24/7 is checked
-        function toggleTimeSettings() {
+        // Initialize shift inputs on load
+        window.onload = () => renderShiftInputs();
+
+        // Toggles 24/7 setting (locks days to Mon-Sun)
+        function toggle247() {
             const is247 = document.getElementById("is247").checked;
-            document.getElementById("timeSettings").style.display = is247 ? "none" : "block";
+            const checkboxes = document.querySelectorAll('input[name="days"]');
+            checkboxes.forEach(cb => {
+                if(is247) {
+                    cb.checked = true;
+                    cb.disabled = true;
+                } else {
+                    cb.checked = false;
+                    cb.disabled = false;
+                }
+            });
+        }
+
+        // Generates dynamic shift input rows
+        function renderShiftInputs() {
+            const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
+            const container = document.getElementById("shiftRows");
+            container.innerHTML = "";
+
+            for(let i = 1; i <= numShifts; i++) {
+                container.innerHTML += `
+                    <div class="shift-row">
+                        <input type="text" id="shiftName_${i}" value="Shift ${i}" placeholder="Shift Name">
+                        <input type="time" id="shiftStart_${i}" onchange="calculateDuration(${i})">
+                        <input type="time" id="shiftEnd_${i}" onchange="calculateDuration(${i})">
+                        <div id="duration_${i}" class="duration-badge">0h 0m</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Calculates shift duration (handles overnight shifts past midnight automatically)
+        function calculateDuration(index) {
+            const start = document.getElementById(`shiftStart_${index}`).value;
+            const end = document.getElementById(`shiftEnd_${index}`).value;
+            const durationDisplay = document.getElementById(`duration_${index}`);
+
+            if(!start || !end) {
+                durationDisplay.innerText = "0h 0m";
+                return;
+            }
+
+            let [sH, sM] = start.split(':').map(Number);
+            let [eH, eM] = end.split(':').map(Number);
+            
+            let startMins = (sH * 60) + sM;
+            let endMins = (eH * 60) + eM;
+
+            // If end time is less than start time, it means the shift crossed midnight into the next day
+            if(endMins < startMins) {
+                endMins += (24 * 60); 
+            }
+
+            let diffMins = endMins - startMins;
+            let hrs = Math.floor(diffMins / 60);
+            let mins = diffMins % 60;
+
+            durationDisplay.innerText = `${hrs}h ${mins}m`;
         }
 
         // Generic function to send POST requests
@@ -129,46 +197,52 @@
         function addPerson() {
             const name = document.getElementById("personName").value.trim();
             if(!name) return alert("Please enter a name.");
-            
             sendPostRequest({ action: "addPerson", personName: name }, "btnAddPerson");
-            document.getElementById("personName").value = ''; // Clear input
+            document.getElementById("personName").value = ''; 
         }
 
-        // 2. Add Role
+        // 2. Add Role & Shifts
         function addRole() {
             const roleName = document.getElementById("roleName").value.trim();
             const is247 = document.getElementById("is247").checked;
-            const startTime = document.getElementById("startTime").value;
-            const endTime = document.getElementById("endTime").value;
+            const numShifts = parseInt(document.getElementById("numShifts").value) || 1;
             
+            // Get Days
             let daysOfWeek = [];
-            document.querySelectorAll('input[name="days"]:checked').forEach(cb => {
-                daysOfWeek.push(cb.value);
-            });
+            document.querySelectorAll('input[name="days"]:checked').forEach(cb => daysOfWeek.push(cb.value));
 
             if(!roleName) return alert("Please enter a role name.");
-            if(!is247 && (!startTime || !endTime || daysOfWeek.length === 0)) {
-                return alert("Please fill out time and days, or select '24/7 manning'.");
+            if(daysOfWeek.length === 0) return alert("Please select at least one day of the week.");
+
+            // Gather all shifts
+            let shiftsData = [];
+            for(let i = 1; i <= numShifts; i++) {
+                const name = document.getElementById(`shiftName_${i}`).value;
+                const start = document.getElementById(`shiftStart_${i}`).value;
+                const end = document.getElementById(`shiftEnd_${i}`).value;
+                const duration = document.getElementById(`duration_${i}`).innerText;
+
+                if(!start || !end) return alert(`Please enter start and end times for Shift ${i}.`);
+                
+                shiftsData.push({ name, start, end, duration });
             }
 
             const payload = {
                 action: "addRole",
                 roleName: roleName,
                 is247: is247,
-                startTime: is247 ? "00:00" : startTime,
-                endTime: is247 ? "23:59" : endTime,
-                daysOfWeek: is247 ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : daysOfWeek
+                daysOfWeek: daysOfWeek,
+                shifts: shiftsData
             };
 
-            sendPostRequest(payload, "btnAddRole");
-            
-            // Clear inputs
-            document.getElementById("roleName").value = '';
-            document.getElementById("is247").checked = false;
-            document.getElementById("startTime").value = '';
-            document.getElementById("endTime").value = '';
-            document.querySelectorAll('input[name="days"]:checked').forEach(cb => cb.checked = false);
-            toggleTimeSettings();
+            sendPostRequest(payload, "btnAddRole").then(() => {
+                // Clear UI
+                document.getElementById("roleName").value = '';
+                document.getElementById("is247").checked = false;
+                document.getElementById("numShifts").value = 1;
+                toggle247();
+                renderShiftInputs();
+            });
         }
 
         // 3. Load Dropdowns for Assignment
@@ -178,28 +252,22 @@
             btn.disabled = true;
 
             try {
-                // Fetch Personnel
                 const pRes = await fetch(API_URL + "?action=getPersonnel");
                 const personnel = await pRes.json();
                 const personSelect = document.getElementById("personSelect");
                 personSelect.innerHTML = '<option value="">-- Select Person --</option>';
-                personnel.forEach(p => {
-                    personSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-                });
+                personnel.forEach(p => personSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
 
-                // Fetch Roles
                 const rRes = await fetch(API_URL + "?action=getRoles");
                 const roles = await rRes.json();
                 const roleSelect = document.getElementById("roleSelect");
                 roleSelect.innerHTML = '<option value="">-- Select Role --</option>';
-                roles.forEach(r => {
-                    roleSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
-                });
+                roles.forEach(r => roleSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`);
 
                 btn.innerText = "Dropdowns Loaded Successfully!";
                 setTimeout(() => { btn.innerText = "Load / Refresh Dropdowns"; }, 3000);
             } catch (error) {
-                alert("Failed to load dropdowns. Make sure you have added data first.");
+                alert("Failed to load dropdowns.");
                 console.error(error);
                 btn.innerText = "Load / Refresh Dropdowns";
             } finally {
@@ -211,16 +279,10 @@
         function tagPerson() {
             const personId = document.getElementById("personSelect").value;
             const roleId = document.getElementById("roleSelect").value;
+            if(!personId || !roleId) return alert("Please select both a person and a role.");
 
-            if(!personId || !roleId) return alert("Please select both a person and a role from the dropdowns.");
-
-            sendPostRequest({
-                action: "tagPerson",
-                personId: personId,
-                roleId: roleId
-            }, "btnAssign");
+            sendPostRequest({ action: "tagPerson", personId: personId, roleId: roleId }, "btnAssign");
             
-            // Reset dropdowns to default after assignment
             document.getElementById("personSelect").value = "";
             document.getElementById("roleSelect").value = "";
         }
