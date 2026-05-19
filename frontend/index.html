@@ -1,335 +1,529 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Duty Roster Planner</title>
+    <title>DutyPlanner PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; background: #f0f2f5; color: #333;}
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px;}
-        
-        /* Tabs */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-        .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; color: #495057;}
-        .tab-btn.active { background: #007bff; color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;}
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"], input[type="time"], input[type="month"], select, textarea, input[type="number"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;}
-        
-        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
-        button:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; } .btn-danger:hover { background: #c82333; }
-        .btn-warning { background: #ffc107; color: #212529; } .btn-warning:hover { background: #e0a800; }
-        .btn-success { background: #28a745; } .btn-success:hover { background: #218838; }
-        
-        /* Tables */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-        th { background: #f8f9fa; font-weight: bold; color: #495057; }
-        .unfilled { color: #dc3545; font-weight: bold; }
-
-        /* Shifts Helper */
-        .shift-container { background: #f8f9fa; padding: 15px; border: 1px solid #ddd; margin-top: 10px; border-radius: 4px;}
-        .shift-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        .tab-btn.active { background-color: rgba(99, 102, 241, 0.1); color: #818cf8; border-right: 3px solid #818cf8; }
     </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-indigo-500/30">
 
-    <h1>Advanced Duty Roster Planner</h1>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-setup')">1. Setup Data</button>
-        <button class="tab-btn" onclick="switchTab('tab-manage'); loadData()">2. Manage & Assign</button>
-        <button class="tab-btn" onclick="switchTab('tab-schedule'); loadData()">3. Generate Roster</button>
-    </div>
-
-    <!-- TAB 1: SETUP -->
-    <div id="tab-setup" class="tab-content active">
-        <div class="card">
-            <h2>Add Personnel</h2>
-            <div class="form-group"><label>Single Add</label><input type="text" id="personName" placeholder="Full Name"></div>
-            <button onclick="savePerson()">Add Person</button>
-            <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-            <div class="form-group"><label>Bulk Import</label><textarea id="bulkPersonnel" rows="3" placeholder="Paste names separated by new line..."></textarea></div>
-            <button class="btn-secondary" onclick="importPersonnel()">Import List</button>
-        </div>
-
-        <div class="card">
-            <h2>Add Role & Shifts</h2>
-            <input type="hidden" id="editRoleId"> <!-- Used for updating -->
-            <div class="form-group"><label>Role Name</label><input type="text" id="roleName" placeholder="e.g., Security Guard"></div>
-            <div class="form-group"><label><input type="checkbox" id="is247" onchange="toggle247()"> 24/7 Role (Mon-Sun)</label></div>
-            <div class="form-group">
-                <label>Days of the Week Required</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="days" value="Mon"> Mon</label>
-                    <label><input type="checkbox" name="days" value="Tue"> Tue</label>
-                    <label><input type="checkbox" name="days" value="Wed"> Wed</label>
-                    <label><input type="checkbox" name="days" value="Thu"> Thu</label>
-                    <label><input type="checkbox" name="days" value="Fri"> Fri</label>
-                    <label><input type="checkbox" name="days" value="Sat"> Sat</label>
-                    <label><input type="checkbox" name="days" value="Sun"> Sun</label>
-                </div>
-            </div>
-            <div class="shift-container">
-                <div class="form-group"><label>Number of Shifts per Day</label><input type="number" id="numShifts" min="1" max="5" value="1" onchange="renderShiftInputs()"></div>
-                <div id="shiftRows"></div>
-            </div>
-            <button id="btnSaveRole" onclick="saveRole()" style="margin-top:15px;">Add Role</button>
-        </div>
-    </div>
-
-    <!-- TAB 2: MANAGE & ASSIGN -->
-    <div id="tab-manage" class="tab-content">
-        <div class="card">
-            <h2>Assign Personnel to Roles</h2>
-            <div class="shift-row">
-                <select id="personSelect"><option value="">Loading...</option></select>
-                <select id="roleSelect"><option value="">Loading...</option></select>
-                <button class="btn-success" onclick="assignRole()">Assign</button>
-            </div>
-            <table id="tagsTable">
-                <thead><tr><th>Person</th><th>Role Assigned</th><th>Action</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div class="card">
-            <h2>Database Manager</h2>
-            <h3>Personnel</h3>
-            <table id="personTable"><thead><tr><th>Name</th><th>Action</th></tr></thead><tbody></tbody></table>
-            
-            <h3 style="margin-top:30px;">Roles & Shifts</h3>
-            <table id="rolesTable"><thead><tr><th>Role</th><th>Days</th><th>Shifts</th><th>Action</th></tr></thead><tbody></tbody></table>
-        </div>
-    </div>
-
-    <!-- TAB 3: GENERATE ROSTER -->
-    <div id="tab-schedule" class="tab-content">
-        <div class="card">
-            <h2>Automated Roster Generator</h2>
-            <p style="color:#666; font-size: 14px;">The engine assigns shifts fairly based on hours worked and enforces an 11-hour rest period between shifts. Slots that cannot be legally filled are marked as <b class="unfilled">UNFILLED</b>.</p>
-            <div class="form-group">
-                <label>Select Month & Year</label>
-                <input type="month" id="scheduleMonth">
-            </div>
-            <button class="btn-success" onclick="generateSchedule()">Generate Automated Roster</button>
-        </div>
-
-        <div class="card">
-            <h2>Duty Roster View</h2>
-            <div style="overflow-x: auto;">
-                <table id="scheduleTable">
-                    <thead><tr><th>Date</th><th>Role</th><th>Shift</th><th>Start Time</th><th>End Time</th><th>Assigned To</th></tr></thead>
-                    <tbody><tr><td colspan="6" style="text-align:center;">Select a month to view data</td></tr></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <div id="app"></div>
 
     <script>
-        // REPLACE WITH YOUR ACTUAL WEB APP URL
+        // REPLACE WITH YOUR ACTUAL WEB APP DEPLOYMENT URL
         const API_URL = "https://script.google.com/macros/s/AKfycbzBf4TJr_ZBPLZJEx4msOy-zXqSZkUU621FO7q3TrC0ml3ZKACComdBPLZ2ahw032v2/exec";
-        
-        let globalData = {}; // Cache database here
 
-        // UI Initialization
-        window.onload = () => { renderShiftInputs(); }
-        
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        function toggle247() {
-            const is247 = document.getElementById("is247").checked;
-            document.querySelectorAll('input[name="days"]').forEach(cb => { cb.checked = is247; cb.disabled = is247; });
-        }
-
-        function renderShiftInputs() {
-            const container = document.getElementById("shiftRows");
-            container.innerHTML = "";
-            let num = parseInt(document.getElementById("numShifts").value) || 1;
-            for(let i=1; i<=num; i++) {
-                container.innerHTML += `<div class="shift-row"><input type="text" id="sName_${i}" value="Shift ${i}"><input type="time" id="sStart_${i}"><input type="time" id="sEnd_${i}"></div>`;
-            }
-        }
-
-        // Generic API Caller
-        async function apiCall(payload, loadingText = "Processing...") {
-            try {
-                if(loadingText) alert(loadingText);
-                const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'text/plain'}, body: JSON.stringify(payload) });
-                const result = await res.json();
-                if(result.message) alert(result.message);
-                if(document.getElementById('tab-manage').classList.contains('active')) loadData();
-                return result;
-            } catch (err) { alert("Server Error."); console.error(err); }
-        }
-
-        // ---- TAB 1: SETUP LOGIC ----
-        function savePerson() {
-            const name = document.getElementById("personName").value.trim();
-            if(!name) return;
-            apiCall({ action: "addPerson", personName: name }).then(() => document.getElementById("personName").value = "");
-        }
-        function importPersonnel() {
-            const names = document.getElementById("bulkPersonnel").value.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
-            if(names.length) apiCall({ action: "importPersonnel", names }).then(() => document.getElementById("bulkPersonnel").value = "");
-        }
-        function saveRole() {
-            const roleName = document.getElementById("roleName").value.trim();
-            const editId = document.getElementById("editRoleId").value;
-            let days = []; document.querySelectorAll('input[name="days"]:checked').forEach(c => days.push(c.value));
+        // ==============================================
+        // FRAMEWORK / STATE MANAGER
+        // ==============================================
+        const UI = {
+            state: {
+                activeTab: 'setup',
+                loading: false,
+                lastMonth: '',
+                data: { personnel: [], roles: [], shifts: [], tags: [], schedule: [] },
+                toast: null
+            },
             
-            let shifts = [];
-            let num = parseInt(document.getElementById("numShifts").value);
-            for(let i=1; i<=num; i++) {
-                let start = document.getElementById(`sStart_${i}`).value;
-                let end = document.getElementById(`sEnd_${i}`).value;
-                if(!start || !end) return alert("Fill all shift times.");
-                shifts.push({ name: document.getElementById(`sName_${i}`).value, start, end });
-            }
-            if(!roleName || !days.length) return alert("Fill role name and days.");
+            init() {
+                this.dispatch('sync');
+            },
 
-            let action = editId ? "updateRole" : "addRole";
-            apiCall({ action, id: editId, roleName, is247: document.getElementById("is247").checked, daysOfWeek: days, shifts }).then(()=>{
-                document.getElementById("roleName").value = "";
-                document.getElementById("editRoleId").value = "";
-                document.getElementById("btnSaveRole").innerText = "Add Role";
-            });
-        }
-
-        // ---- TAB 2: DATA MANAGER LOGIC ----
-        async function loadData() {
-            try {
-                const res = await fetch(API_URL + "?action=getAllData");
-                globalData = await res.json();
-                populateManagerTables();
-                populateDropdowns();
-            } catch(e) { console.error("Failed loading data."); }
-        }
-
-        function populateManagerTables() {
-            // Personnel Table
-            document.querySelector("#personTable tbody").innerHTML = globalData.personnel.map(p => 
-                `<tr><td>${p.name}</td><td>
-                <button class="btn-danger" onclick="apiCall({action:'deletePerson', id:'${p.id}'})">Delete</button>
-                </td></tr>`).join("");
-            
-            // Roles Table
-            document.querySelector("#rolesTable tbody").innerHTML = globalData.roles.map(r => {
-                let rShifts = globalData.shifts.filter(s => s.roleId === r.id).map(s => `${s.name} (${s.start}-${s.end})`).join("<br>");
-                return `<tr><td>${r.name}</td><td>${r.days}</td><td>${rShifts}</td><td>
-                    <button class="btn-danger" onclick="apiCall({action:'deleteRole', id:'${r.id}'})">Delete</button>
-                </td></tr>`;
-            }).join("");
-
-            // Assignments/Tags Table
-            document.querySelector("#tagsTable tbody").innerHTML = globalData.tags.map(t => {
-                let p = globalData.personnel.find(x => x.id === t.personId)?.name || "Unknown";
-                let r = globalData.roles.find(x => x.id === t.roleId)?.name || "Unknown";
-                return `<tr><td>${p}</td><td>${r}</td><td>
-                    <button class="btn-danger" onclick="apiCall({action:'deleteTag', id:'${t.id}'})">Remove</button>
-                </td></tr>`;
-            }).join("");
-        }
-
-        function populateDropdowns() {
-            let pSel = document.getElementById("personSelect"); pSel.innerHTML = "<option value=''>Select Person</option>";
-            globalData.personnel.forEach(p => pSel.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-            let rSel = document.getElementById("roleSelect"); rSel.innerHTML = "<option value=''>Select Role</option>";
-            globalData.roles.forEach(r => rSel.innerHTML += `<option value="${r.id}">${r.name}</option>`);
-        }
-
-        function assignRole() {
-            let pId = document.getElementById("personSelect").value;
-            let rId = document.getElementById("roleSelect").value;
-            if(pId && rId) apiCall({ action: "tagPerson", personId: pId, roleId: rId });
-        }
-
-        // ---- TAB 3: SCHEDULING LOGIC ----
-        function generateSchedule() {
-            let ym = document.getElementById("scheduleMonth").value; // Format: YYYY-MM
-            if(!ym) return alert("Please select a month and year.");
-            let [yr, mo] = ym.split('-');
-            
-            apiCall({ action: "generateSchedule", year: parseInt(yr), month: parseInt(mo) }, "Generating schedule. This may take 10-20 seconds...").then(() => {
-                loadData().then(displaySchedule); // Refresh cache and display
-            });
-        }
-
-        function displaySchedule() {
-            let ym = document.getElementById("scheduleMonth").value; // e.g. "2026-05"
-            if(!ym) return;
-
-            // 1. Bulletproof Filtering: Handle Google Sheets auto-date formatting
-            let filtered = globalData.schedule.filter(s => {
-                let recordYM = String(s.yearMonth);
+            async dispatch(action, payload = {}) {
+                this.state.loading = true;
+                this.render();
                 
-                // If it matches exactly or starts with it (handles ISO strings like "2026-05-01T...")
-                if (recordYM.startsWith(ym)) return true;
-                
-                // If Google Sheets converted it to text like "May 2026"
                 try {
-                    let d = new Date(recordYM);
-                    let formattedD = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;
-                    return formattedD === ym;
-                } catch(e) { 
-                    return false; 
-                }
-            });
-
-            let tbody = document.querySelector("#scheduleTable tbody");
-            if(!filtered.length) { 
-                tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No schedule found for this month.</td></tr>"; 
-                return; 
-            }
-            
-            // 2. Safely parse and render the table
-            tbody.innerHTML = filtered.map(s => {
-                let rowClass = s.person === "UNFILLED" ? "class='unfilled'" : "";
-                
-                // Extract YYYY-MM-DD Date safely
-                let rawDate = String(s.date);
-                let displayDate = rawDate;
-                if (rawDate.includes('T')) {
-                    displayDate = rawDate.split('T')[0];
-                } else if (!isNaN(new Date(rawDate).getTime())) {
-                    let d = new Date(rawDate);
-                    displayDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                }
-
-                // Extract Time safely (Handling ISO strings and locale formats)
-                const formatTime = (val) => {
-                    let str = String(val);
-                    if(str.includes('T') || !isNaN(new Date(str).getTime())) {
-                        return new Date(str).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ action, ...payload })
+                    });
+                    const json = await res.json();
+                    
+                    if (json.status === 'success') {
+                        this.state.data = json.data;
+                        if (json.message) this.showToast(json.message, 'success');
+                    } else {
+                        this.showToast(json.message || "An error occurred", 'error');
                     }
-                    if(str.includes(', ')) return str.split(', ')[1]; 
-                    return str;
-                };
+                } catch (e) {
+                    this.showToast("Network Error: Could not connect to database.", 'error');
+                }
+                
+                this.state.loading = false;
+                this.render();
+                
+                // Re-hydrate local DOM dependencies after render
+                if(this.state.activeTab === 'setup') window.renderShiftInputs();
+            },
 
-                return `<tr>
-                    <td>${displayDate}</td>
-                    <td>${s.role}</td>
-                    <td>${s.shift}</td>
-                    <td>${formatTime(s.start)}</td>
-                    <td>${formatTime(s.end)}</td>
-                    <td ${rowClass}>${s.person}</td>
-                </tr>`;
-            }).join("");
+            showToast(msg, type) {
+                this.state.toast = { msg, type };
+                this.render();
+                setTimeout(() => { this.state.toast = null; this.render(); }, 3000);
+            },
+            
+            render() {
+                document.getElementById('app').innerHTML = AppTemplate(this.state);
+                lucide.createIcons();
+            }
+        };
+
+        // ==============================================
+        // COMPONENTS
+        // ==============================================
+        function AppTemplate(state) {
+            return `
+            <div class="flex h-screen overflow-hidden">
+                ${Sidebar(state)}
+                <main class="flex-1 overflow-y-auto bg-zinc-950 p-8">
+                    <div class="max-w-6xl mx-auto pb-12">
+                        ${state.activeTab === 'setup' ? SetupView(state) : ''}
+                        ${state.activeTab === 'manage' ? ManageView(state) : ''}
+                        ${state.activeTab === 'roster' ? RosterView(state) : ''}
+                    </div>
+                </main>
+            </div>
+            ${state.loading ? Loader() : ''}
+            ${state.toast ? Toast(state.toast) : ''}
+            `;
         }
 
-        // Event Listener to show schedule when month changes manually
-        document.getElementById("scheduleMonth").addEventListener('change', displaySchedule);
+        function Sidebar(state) {
+            const tabs = [
+                { id: 'setup', name: 'Base Setup', icon: 'database' },
+                { id: 'manage', name: 'Role Assignments', icon: 'users' },
+                { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' }
+            ];
+            return `
+            <aside class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col z-10 shadow-2xl">
+                <div class="p-6 border-b border-zinc-800 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 text-indigo-400">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white leading-tight">DutyPlanner</h1>
+                        <p class="text-xs text-zinc-500">PRO EDITION</p>
+                    </div>
+                </div>
+                <nav class="flex-1 p-4 space-y-2">
+                    ${tabs.map(t => `
+                        <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${state.activeTab === t.id ? 'active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'} border-r-2 border-transparent">
+                            <i data-lucide="${t.icon}" class="w-5 h-5"></i>
+                            ${t.name}
+                        </button>
+                    `).join('')}
+                </nav>
+            </aside>
+            `;
+        }
+
+        function SetupView(state) {
+            return `
+            <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="mb-2">
+                    <h2 class="text-2xl font-bold text-white">Database Setup</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Configure your personnel list and define daily role logic.</p>
+                </div>
+                
+                <!-- Personnel Section -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5 text-indigo-400"></i> Personnel Registry</h3>
+                    <div class="grid grid-cols-2 gap-8">
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-2">Add Individual</label>
+                            <div class="flex gap-3">
+                                <input type="text" id="inpPersonName" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. John Doe">
+                                <button onclick="window.handleAddPerson()" class="bg-zinc-100 text-zinc-900 px-5 py-2 rounded-lg font-medium hover:bg-white transition-colors text-sm shadow">Add</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-2">Bulk Import List</label>
+                            <textarea id="inpBulkPerson" rows="3" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500 transition-colors mb-3 resize-none" placeholder="Paste names separated by commas or new lines..."></textarea>
+                            <button onclick="window.handleBulkImport()" class="w-full bg-zinc-800 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-700 transition-colors text-sm border border-zinc-700">Import Batch</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Section -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="briefcase" class="w-5 h-5 text-indigo-400"></i> Role & Shift Logic</h3>
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Role Name</label>
+                                <input type="text" id="inpRoleName" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm outline-none focus:border-indigo-500" placeholder="e.g. Area Commander">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Weekly Pattern</label>
+                                <label class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 cursor-pointer hover:border-zinc-700 transition-colors h-[38px]">
+                                    <input type="checkbox" id="inpIs247" onchange="window.toggleDays(this.checked)" class="w-4 h-4 rounded border-zinc-700 bg-zinc-900">
+                                    <span class="text-sm">Runs 24/7 (Mon-Sun)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-3">Target Days (if not 24/7)</label>
+                            <div class="flex flex-wrap gap-2">
+                                ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => `
+                                    <label class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 px-4 py-2 rounded-md cursor-pointer hover:border-zinc-700">
+                                        <input type="checkbox" value="${day}" class="role-day-cb w-4 h-4 rounded bg-zinc-900">
+                                        <span class="text-sm font-medium text-zinc-300">${day}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-950/50 rounded-lg p-5 border border-zinc-800/50 mt-6">
+                            <div class="flex items-center justify-between mb-4 pb-4 border-b border-zinc-800/50">
+                                <div>
+                                    <label class="block text-sm font-medium text-zinc-200">Shift Topology</label>
+                                    <p class="text-xs text-zinc-500">Define how many shifts are needed per active day.</p>
+                                </div>
+                                <select id="inpNumShifts" onchange="window.renderShiftInputs()" class="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-sm outline-none w-32 shadow-inner">
+                                    <option value="1">1 Shift</option>
+                                    <option value="2">2 Shifts</option>
+                                    <option value="3">3 Shifts</option>
+                                    <option value="4">4 Shifts</option>
+                                    <option value="5">5 Shifts</option>
+                                </select>
+                            </div>
+                            <div id="shiftRowsContainer" class="space-y-3">
+                                <!-- JS Injected Shifts -->
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button onclick="window.handleAddRole()" class="w-full bg-zinc-100 text-zinc-900 px-4 py-3 rounded-lg font-bold hover:bg-white transition-all text-sm shadow-lg shadow-zinc-200/5">Add Role to Database</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        function ManageView(state) {
+            return `
+            <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="mb-2">
+                    <h2 class="text-2xl font-bold text-white">Role Assignments</h2>
+                    <p class="text-zinc-400 text-sm mt-1">Manage personnel capabilities and remove obsolete records.</p>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
+                   <h3 class="text-lg font-semibold text-white mb-5 flex items-center gap-2"><i data-lucide="link" class="w-5 h-5 text-indigo-400"></i> Map Person to Role</h3>
+                   <div class="flex gap-4">
+                       <select id="selPerson" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none text-sm text-zinc-300">
+                           <option value="">-- Select Personnel --</option>
+                           ${state.data.personnel.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                       </select>
+                       <select id="selRole" class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none text-sm text-zinc-300">
+                           <option value="">-- Select Target Role --</option>
+                           ${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+                       </select>
+                       <button onclick="window.handleAssign()" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg font-medium hover:bg-indigo-500 transition-colors shadow">Authorize</button>
+                   </div>
+                </div>
+
+                <!-- Split view tables -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col h-[400px] shadow-xl">
+                        <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl flex justify-between items-center">
+                            <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Personnel Database</h3>
+                            <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.personnel.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-zinc-400">
+                                <tbody class="divide-y divide-zinc-800/50">
+                                    ${state.data.personnel.map(p => `
+                                    <tr class="hover:bg-zinc-800/20 group transition-colors">
+                                        <td class="px-5 py-3 font-medium text-zinc-200">${p.name}</td>
+                                        <td class="px-5 py-3 text-right">
+                                            <button onclick="UI.dispatch('deletePerson', {id: '${p.id}'})" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                        </td>
+                                    </tr>
+                                    `).join('') || `<tr><td colspan="2" class="px-5 py-8 text-center text-zinc-600 text-xs italic">No personnel in database</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col h-[400px] shadow-xl">
+                        <div class="p-4 border-b border-zinc-800 bg-zinc-950 rounded-t-xl flex justify-between items-center">
+                            <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Defined Roles</h3>
+                            <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.roles.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-zinc-400">
+                                <tbody class="divide-y divide-zinc-800/50">
+                                    ${state.data.roles.map(r => `
+                                    <tr class="hover:bg-zinc-800/20 group transition-colors">
+                                        <td class="px-5 py-3">
+                                            <div class="font-medium text-zinc-200">${r.name}</div>
+                                            <div class="text-xs text-zinc-500 mt-0.5">${r.days}</div>
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <button onclick="UI.dispatch('deleteRole', {id: '${r.id}'})" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                        </td>
+                                    </tr>
+                                    `).join('') || `<tr><td colspan="2" class="px-5 py-8 text-center text-zinc-600 text-xs italic">No roles established</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl mt-6">
+                    <div class="p-4 border-b border-zinc-800 bg-zinc-950 flex justify-between items-center">
+                        <h3 class="font-semibold text-zinc-300 text-sm tracking-wide uppercase">Active Assignments Registry</h3>
+                        <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${state.data.tags.length} Mapping(s)</span>
+                    </div>
+                    <div class="max-h-[300px] overflow-y-auto">
+                        <table class="w-full text-left text-sm text-zinc-400">
+                            <thead class="bg-zinc-900/50 text-zinc-500 text-xs uppercase sticky top-0 backdrop-blur-sm">
+                                <tr><th class="px-5 py-3">Personnel</th><th class="px-5 py-3">Assigned Role Capable</th><th class="px-5 py-3 text-right">Action</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800/50">
+                                ${state.data.tags.map(t => {
+                                    const p = state.data.personnel.find(x => x.id === t.personId)?.name || '<span class="text-red-400 line-through">Deleted</span>';
+                                    const r = state.data.roles.find(x => x.id === t.roleId)?.name || '<span class="text-red-400 line-through">Deleted</span>';
+                                    return `
+                                    <tr class="hover:bg-zinc-800/20 transition-colors">
+                                        <td class="px-5 py-3 font-medium text-zinc-300">${p}</td>
+                                        <td class="px-5 py-3">
+                                            <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded text-xs font-semibold tracking-wide">${r}</span>
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <button onclick="UI.dispatch('deleteTag', {id: '${t.id}'})" class="text-zinc-500 hover:text-red-400 transition-colors"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                                        </td>
+                                    </tr>
+                                    `;
+                                }).join('') || `<tr><td colspan="3" class="px-5 py-12 text-center text-zinc-600 text-sm italic">No assignments configured yet.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        function RosterView(state) {
+            const ym = document.getElementById('inpMonth')?.value || state.lastMonth || "";
+            let scheduleRows = [];
+            if(ym) {
+                scheduleRows = state.data.schedule.filter(s => String(s.yearMonth).startsWith(ym));
+            }
+
+            const formatTime = (isoString) => {
+               try { 
+                  const d = new Date(isoString); 
+                  if(!isNaN(d)) return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); 
+               } catch(e) {}
+               return isoString;
+            };
+
+            const formatDate = (isoString) => {
+               try { 
+                  const d = new Date(isoString); 
+                  if(!isNaN(d)) return d.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'}); 
+               } catch(e) {}
+               return isoString;
+            };
+
+            return `
+            <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="mb-4">
+                    <h2 class="text-2xl font-bold text-white">Heuristic Roster Engine</h2>
+                    <p class="text-zinc-400 text-sm mt-1 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i> Engine enforces strict 11-hour rest periods and prioritizes hour balance.
+                    </p>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl flex items-end gap-6">
+                    <div class="flex-1 max-w-sm">
+                        <label class="block text-sm font-medium text-zinc-400 mb-2">Target Month / Year</label>
+                        <input type="month" id="inpMonth" value="${ym}" onchange="UI.state.lastMonth = this.value; UI.render();" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none focus:border-indigo-500 text-sm transition-colors text-white">
+                    </div>
+                    <button onclick="window.handleGenerate()" class="bg-white text-black px-6 py-2.5 rounded-lg font-bold hover:bg-zinc-200 transition-colors shadow flex items-center gap-2">
+                        <i data-lucide="cpu" class="w-4 h-4"></i> Execute Engine
+                    </button>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto max-h-[600px] relative">
+                        <table class="w-full text-left text-sm text-zinc-300 whitespace-nowrap">
+                            <thead class="bg-zinc-950 text-zinc-400 text-xs uppercase sticky top-0 z-10 border-b border-zinc-800">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Date</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Role</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Shift Node</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider">Time Window</th>
+                                    <th class="px-6 py-4 font-semibold tracking-wider text-right">Assigned Personnel</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800/50">
+                                ${scheduleRows.length > 0 ? scheduleRows.map((s, i) => `
+                                <tr class="hover:bg-zinc-800/30 transition-colors ${i % 2 === 0 ? 'bg-zinc-900/10' : ''}">
+                                    <td class="px-6 py-3.5 font-medium text-zinc-300">${formatDate(s.date)}</td>
+                                    <td class="px-6 py-3.5 text-zinc-400">${s.role}</td>
+                                    <td class="px-6 py-3.5 text-zinc-400">${s.shift}</td>
+                                    <td class="px-6 py-3.5 text-xs font-mono text-zinc-500 bg-black/20 rounded px-2 mx-6 self-start w-fit">
+                                        ${formatTime(s.start)} - ${formatTime(s.end)}
+                                    </td>
+                                    <td class="px-6 py-3.5 text-right">
+                                        ${s.person === 'UNFILLED' 
+                                            ? `<span class="inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Unfilled</span>`
+                                            : `<span class="font-semibold text-zinc-200">${s.person}</span>`
+                                        }
+                                    </td>
+                                </tr>
+                                `).join('') : `
+                                <tr><td colspan="5" class="px-6 py-20 text-center text-zinc-500">
+                                    <div class="flex flex-col items-center justify-center opacity-40">
+                                        <i data-lucide="calendar-x" class="w-16 h-16 mb-4"></i>
+                                        <p class="text-lg">${ym ? "Engine has not generated data for this timeframe." : "Select a valid timeframe to inspect data."}</p>
+                                    </div>
+                                </td></tr>
+                                `}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        function Loader() {
+            return `
+            <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur z-50 flex flex-col items-center justify-center animate-in fade-in duration-200">
+                <div class="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+                <p class="text-indigo-300 font-semibold tracking-widest text-sm uppercase animate-pulse">Syncing Database...</p>
+            </div>
+            `;
+        }
+
+        function Toast(toast) {
+            const isErr = toast.type === 'error';
+            return `
+            <div class="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
+                <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-3.5 rounded-xl shadow-2xl font-semibold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
+                    <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-5 h-5 ${isErr ? 'text-white' : 'text-green-500'}"></i>
+                    ${toast.msg}
+                </div>
+            </div>
+            `;
+        }
+
+        // ==============================================
+        // ACTION HANDLERS (Bound to Window)
+        // ==============================================
+        window.switchTab = (tab) => { 
+            UI.state.activeTab = tab; 
+            UI.render(); 
+        };
+
+        window.handleAddPerson = () => {
+            const val = document.getElementById('inpPersonName').value.trim();
+            if(val) UI.dispatch('addPerson', { personName: val });
+        };
+
+        window.handleBulkImport = () => {
+            const names = document.getElementById('inpBulkPerson').value.split(/\r?\n|,/).map(n=>n.trim()).filter(n=>n);
+            if(names.length > 0) UI.dispatch('importPersonnel', { names });
+        };
+
+        window.toggleDays = (isChecked) => {
+            document.querySelectorAll('.role-day-cb').forEach(cb => {
+                cb.checked = isChecked;
+                cb.disabled = isChecked;
+            });
+        };
+
+        window.renderShiftInputs = () => {
+            const num = parseInt(document.getElementById('inpNumShifts').value) || 1;
+            let html = '';
+            for(let i=1; i<=num; i++) {
+                html += `
+                <div class="flex gap-4 items-center bg-zinc-900 p-4 rounded-lg border border-zinc-800">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Shift ${i} Node</label>
+                        <input type="text" id="sName_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500" value="Shift ${i}">
+                    </div>
+                    <div class="w-36">
+                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">Start Time</label>
+                        <input type="time" id="sStart_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
+                    </div>
+                    <div class="w-36">
+                        <label class="block text-[10px] font-bold text-zinc-500 mb-1.5 uppercase tracking-widest">End Time</label>
+                        <input type="time" id="sEnd_${i}" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-300">
+                    </div>
+                </div>
+                `;
+            }
+            const container = document.getElementById('shiftRowsContainer');
+            if(container) container.innerHTML = html;
+        };
+
+        window.handleAddRole = () => {
+            const roleName = document.getElementById('inpRoleName').value.trim();
+            const is247 = document.getElementById('inpIs247').checked;
+            const days = [];
+            
+            if (is247) {
+                ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => days.push(d));
+            } else {
+                document.querySelectorAll('.role-day-cb:checked').forEach(cb => days.push(cb.value));
+            }
+            
+            const num = parseInt(document.getElementById('inpNumShifts').value) || 1;
+            const shifts = [];
+            for(let i=1; i<=num; i++) {
+                const sn = document.getElementById(`sName_${i}`).value.trim();
+                const st = document.getElementById(`sStart_${i}`).value;
+                const se = document.getElementById(`sEnd_${i}`).value;
+                if(!sn || !st || !se) return UI.showToast("Missing parameters in shift inputs.", "error");
+                shifts.push({ name: sn, start: st, end: se });
+            }
+
+            if(!roleName) return UI.showToast("Role name is required.", "error");
+            if(days.length === 0) return UI.showToast("Select at least one day constraint.", "error");
+
+            UI.dispatch('addRole', { roleName, is247, daysOfWeek: days, shifts });
+        };
+
+        window.handleAssign = () => {
+            const personId = document.getElementById('selPerson').value;
+            const roleId = document.getElementById('selRole').value;
+            if(!personId || !roleId) return UI.showToast("Select both a person and a role.", "error");
+            UI.dispatch('tagPerson', { personId, roleId });
+        };
+
+        window.handleGenerate = () => {
+            const ym = document.getElementById('inpMonth').value;
+            if(!ym) return UI.showToast("Select a valid month to execute engine.", "error");
+            const [year, month] = ym.split('-');
+            
+            if(UI.state.data.roles.length === 0 || UI.state.data.personnel.length === 0) {
+                return UI.showToast("Engine halted: Missing personnel or roles.", "error");
+            }
+            
+            UI.dispatch('generateSchedule', { year: parseInt(year), month: parseInt(month) });
+        };
+
+        // Bootstrap App
+        window.onload = () => UI.init();
+
     </script>
 </body>
 </html>
