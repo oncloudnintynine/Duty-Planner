@@ -50,8 +50,7 @@
               searchQuery: '',
               selectedPersonId: null,
               editingRoleId: null,
-              data: { seniorities: [], personnel: [], roles: [], shifts: [], tags: [], schedule: [] },
-              toast: null
+              data: { seniorities: [], personnel: [], roles: [], shifts: [], tags: [], schedule: [] }
           },
           
           init() {
@@ -93,16 +92,33 @@
               
               this.state.loading = false;
               this.render();
-              
-              if(this.state.activeTab === 'setup' && !this.state.editingRoleId) {
-                  window.renderShiftInputs();
-              }
           },
 
           showToast(msg, type) {
-              this.state.toast = { msg, type };
-              this.render();
-              setTimeout(() => { this.state.toast = null; this.render(); }, 3000);
+              // Decoupled from state.render() to prevent wiping form inputs when disappearing
+              const existing = document.getElementById('toast-container');
+              if (existing) existing.remove();
+              
+              const isErr = type === 'error';
+              const toastHtml = `
+              <div id="toast-container" class="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
+                  <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-3.5 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
+                      <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-5 h-5 ${isErr ? 'text-white' : 'text-emerald-500'}"></i>
+                      ${msg}
+                  </div>
+              </div>
+              `;
+              document.body.insertAdjacentHTML('beforeend', toastHtml);
+              if (window.lucide) window.lucide.createIcons();
+              
+              setTimeout(() => {
+                  const t = document.getElementById('toast-container');
+                  if (t) {
+                      t.style.opacity = '0';
+                      t.style.transition = 'opacity 0.3s ease';
+                      setTimeout(() => t.remove(), 300);
+                  }
+              }, 3000);
           },
           
           render() {
@@ -119,7 +135,14 @@
               }
 
               document.getElementById('app').innerHTML = AppTemplate(this.state);
-              lucide.createIcons();
+              if (window.lucide) window.lucide.createIcons();
+
+              // CRITICAL FIX: Ensure shift inputs always render when viewing the Setup tab
+              if (this.state.activeTab === 'setup' && !this.state.editingRoleId) {
+                  if (typeof window.renderShiftInputs === 'function') {
+                      window.renderShiftInputs();
+                  }
+              }
 
               if (activeId) {
                   const restoredEl = document.getElementById(activeId);
@@ -156,7 +179,6 @@
               </main>
           </div>
           ${state.loading ? Loader() : ''}
-          ${state.toast ? Toast(state.toast) : ''}
           `;
       }
 
@@ -354,8 +376,8 @@
                                   <option value="4">4 Shifts</option>
                               </select>
                           </div>
+                          <!-- This Container MUST be hydrated by renderShiftInputs() -->
                           <div id="shiftRowsContainer" class="space-y-4">
-                              <!-- JS Injected Shifts -->
                           </div>
                       </div>
 
@@ -760,18 +782,6 @@
           `;
       }
 
-      function Toast(toast) {
-          const isErr = toast.type === 'error';
-          return `
-          <div class="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
-              <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-3.5 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
-                  <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-5 h-5 ${isErr ? 'text-white' : 'text-emerald-500'}"></i>
-                  ${toast.msg}
-              </div>
-          </div>
-          `;
-      }
-
       // ==============================================
       // ACTION HANDLERS (Bound to Window)
       // ==============================================
@@ -904,7 +914,7 @@
           const container = document.getElementById('shiftRowsContainer');
           if(container) {
               container.innerHTML = html;
-              lucide.createIcons();
+              if (window.lucide) window.lucide.createIcons();
           }
       };
 
