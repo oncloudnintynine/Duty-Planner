@@ -17,24 +17,24 @@
      /* ENHANCED INPUT VISIBILITY */
      input[type="text"], input[type="number"], input[type="time"], input[type="month"], select {
          color: #ffffff !important;
-         background-color: #1f1f22 !important; 
-         border: 1px solid #71717a !important; /* Brighter neutral border */
+         background-color: #18181b !important; 
+         border: 2px solid #52525b !important; 
          border-radius: 0.5rem;
          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
          transition: all 0.2s ease-in-out;
      }
      input:hover, select:hover {
-         border-color: #a1a1aa !important; /* Lighter on hover */
+         border-color: #a1a1aa !important; 
          background-color: #27272a !important;
      }
      input:focus, select:focus {
-         border-color: #818cf8 !important; /* Indigo highlight */
+         border-color: #818cf8 !important; 
          box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
-         background-color: #18181b !important;
+         background-color: #09090b !important;
          outline: none !important;
      }
      ::placeholder {
-         color: #9ca3af !important; /* Brighter placeholder */
+         color: #a1a1aa !important; 
          opacity: 1 !important;
      }
      /* Checkbox distinct styling */
@@ -67,6 +67,7 @@
              searchQuery: '',
              selectedPersonId: null,
              editingRoleId: null,
+             viewMode: 'both',
              data: { seniorities: [], personnel: [], roles: [], shifts: [], tags: [], schedule: [] }
          },
          
@@ -333,19 +334,19 @@
                      <div class="grid grid-cols-3 gap-6">
                          <div>
                              <label class="block text-sm font-semibold text-zinc-200 mb-2">Role Name</label>
-                             <input type="text" id="inpRoleName" class="w-full px-4 py-2 text-sm" placeholder="e.g. Area Commander">
+                             <input type="text" id="inpRoleName" class="w-full px-4 py-2 text-sm font-medium" placeholder="e.g. Area Commander">
                          </div>
                          <div>
                              <label class="block text-sm font-semibold text-zinc-200 mb-2">Role Type</label>
-                             <select id="inpRoleType" class="w-full px-4 py-2 text-sm">
+                             <select id="inpRoleType" class="w-full px-4 py-2 text-sm font-medium">
                                  <option value="On-Site">On-Site (Requires Presence)</option>
                                  <option value="Standby">Standby (Recall Only)</option>
                              </select>
                          </div>
                          <div>
                              <label class="block text-sm font-semibold text-zinc-200 mb-2">Weekly Pattern</label>
-                             <label class="flex items-center gap-3 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-2 cursor-pointer hover:border-indigo-400 transition-colors h-[38px]">
-                                 <input type="checkbox" id="inpIs247" onchange="window.toggleDays(this.checked)" class="w-4 h-4 rounded border-zinc-500 bg-zinc-900 text-indigo-500 focus:ring-indigo-500">
+                             <label class="flex items-center gap-3 bg-[#18181b] border-2 border-zinc-600 rounded-lg px-4 py-2 cursor-pointer hover:border-indigo-400 transition-colors h-[38px] shadow-inner">
+                                 <input type="checkbox" id="inpIs247" onchange="window.toggleDays(this.checked)" class="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500">
                                  <span class="text-sm font-medium text-white">Runs 24/7 (Mon-Sun)</span>
                              </label>
                          </div>
@@ -355,9 +356,9 @@
                          <label class="block text-sm font-semibold text-zinc-200 mb-3">Target Days (if not 24/7)</label>
                          <div class="flex flex-wrap gap-3">
                              ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => `
-                                 <label class="flex items-center gap-2 bg-zinc-800 border border-zinc-600 px-4 py-2 rounded-md cursor-pointer hover:border-indigo-400 transition-colors">
+                                 <label class="flex items-center gap-2 bg-[#18181b] border-2 border-zinc-600 px-4 py-2 rounded-md cursor-pointer hover:border-indigo-400 transition-colors shadow-inner">
                                      <input type="checkbox" value="${day}" class="role-day-cb w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500">
-                                     <span class="text-sm font-semibold text-white">${day}</span>
+                                     <span class="text-sm font-bold text-white">${day}</span>
                                  </label>
                              `).join('')}
                          </div>
@@ -369,7 +370,7 @@
                          <p class="text-xs text-zinc-400 mb-4">Select other roles that this person can execute at the exact same time without violating the rest rules.</p>
                          <div class="flex flex-wrap gap-3">
                              ${state.data.roles.map(r => `
-                                 <label class="flex items-center gap-2 bg-zinc-800 border border-zinc-600 px-3 py-1.5 rounded-md cursor-pointer hover:border-indigo-400 transition-colors">
+                                 <label class="flex items-center gap-2 bg-[#18181b] border-2 border-zinc-600 px-3 py-1.5 rounded-md cursor-pointer hover:border-indigo-400 transition-colors shadow-inner">
                                      <input type="checkbox" value="${r.id}" class="role-concurrent-cb w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500">
                                      <span class="text-xs font-semibold text-white">${r.name}</span>
                                  </label>
@@ -382,7 +383,7 @@
                          <div class="flex items-center justify-between mb-4 pb-4 border-b border-zinc-600/50">
                              <div>
                                  <label class="block text-sm font-bold text-white">Shift Topology & Headcount</label>
-                                 <p class="text-xs text-zinc-400 mt-1">Define shift times and exact number of personnel required per seniority.</p>
+                                 <p class="text-xs text-zinc-400 mt-1">Define shift times and exact number of personnel required per seniority. (1 Reserve per active seniority is automatically generated)</p>
                              </div>
                              <select id="inpNumShifts" onchange="window.renderShiftInputs()" class="px-4 py-2 text-sm w-32 font-bold shadow-md">
                                  <option value="1">1 Shift</option>
@@ -463,7 +464,7 @@
              <!-- Add Personnel Quick Bar -->
              <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-4 flex gap-4 items-center shadow-lg">
                  <div class="flex-1 flex gap-2">
-                     <input type="text" id="inpNewPerson" class="flex-1 px-4 py-2 text-sm" placeholder="Add single person (e.g. Jane Doe)">
+                     <input type="text" id="inpNewPerson" class="flex-1 px-4 py-2 text-sm font-medium" placeholder="Add single person (e.g. Jane Doe)">
                      <select id="inpNewSeniority" class="px-3 py-2 text-sm font-medium">
                          ${sortedSen.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                      </select>
@@ -471,8 +472,8 @@
                  </div>
                  <div class="w-px h-8 bg-zinc-700"></div>
                  <div class="flex-1 flex gap-2">
-                     <input type="text" id="inpBulkPerson" class="flex-1 px-4 py-2 text-sm" placeholder="Bulk Import (comma separated)">
-                     <button onclick="window.handleBulkImport('${defaultSenId}')" class="bg-zinc-700 text-white px-5 py-2 rounded-lg font-bold hover:bg-zinc-600 transition-colors text-sm border border-zinc-600 shadow">Import Base Tiers</button>
+                     <input type="text" id="inpBulkPerson" class="flex-1 px-4 py-2 text-sm font-medium" placeholder="Bulk Import (comma separated)">
+                     <button onclick="window.handleBulkImport('${defaultSenId}')" class="bg-zinc-700 text-white px-5 py-2 rounded-lg font-bold hover:bg-zinc-600 transition-colors text-sm border border-zinc-500 shadow">Import Base Tiers</button>
                  </div>
              </div>
 
@@ -482,7 +483,7 @@
                      <div class="p-4 border-b border-zinc-700 bg-zinc-800/80 rounded-t-xl">
                          <div class="relative">
                              <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-zinc-400"></i>
-                             <input type="text" id="searchPersonnel" placeholder="Search personnel..." value="${state.searchQuery.replace(/"/g, '&quot;')}" oninput="UI.state.searchQuery = this.value; UI.render();" class="w-full pl-9 pr-4 py-2 text-sm">
+                             <input type="text" id="searchPersonnel" placeholder="Search personnel..." value="${state.searchQuery.replace(/"/g, '&quot;')}" oninput="UI.state.searchQuery = this.value; UI.render();" class="w-full pl-9 pr-4 py-2 text-sm font-medium">
                          </div>
                      </div>
                      <div class="flex-1 overflow-y-auto hide-scroll p-2 space-y-1">
@@ -523,7 +524,7 @@
                              <div>
                                  <label class="block text-sm font-bold text-zinc-300 mb-2 uppercase tracking-wider">Seniority Level</label>
                                  <div class="flex gap-3 max-w-sm">
-                                     <select id="editSeniority" class="flex-1 px-4 py-2 text-sm font-medium">
+                                     <select id="editSeniority" class="flex-1 px-4 py-2 text-sm font-bold text-indigo-200">
                                          ${sortedSen.map(s => `<option value="${s.id}" ${selPerson.seniority === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
                                      </select>
                                      <button onclick="window.handleUpdateSeniority('${selPerson.id}', '${selPerson.name}')" class="bg-zinc-700 hover:bg-zinc-600 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors border border-zinc-500 shadow">Update</button>
@@ -551,7 +552,7 @@
                                  </div>
                                  
                                  <div class="mt-5 flex gap-3 max-w-md">
-                                     <select id="assignRoleSelect" class="flex-1 px-4 py-2 text-sm font-medium">
+                                     <select id="assignRoleSelect" class="flex-1 px-4 py-2 text-sm font-bold">
                                          <option value="">-- Assign Capability --</option>
                                          ${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
                                      </select>
@@ -575,9 +576,11 @@
              if(p.seniority && existingCount[p.seniority] !== undefined) existingCount[p.seniority]++;
          });
 
-         const DUTY_HOURS_PER_PERSON_PER_WEEK = 15; 
+         const DUTY_HOURS_CAPACITY = 15; 
+         const EFFECTIVE_SHIFTS_PER_WEEK = 192 / 52.14; // ~3.682 available shifts per week per person
+         
          let workings = {};
-         sortedSen.forEach(s => workings[s.id] = { onSiteHrs: 0, standbyHrs: 0, totalHrs: 0, requiredCount: 0 });
+         sortedSen.forEach(s => workings[s.id] = { onSiteHrs: 0, standbyHrs: 0, totalHrs: 0, reserveShifts: 0, reserveHeadcount: 0, requiredCount: 0 });
 
          state.data.roles.forEach(r => {
              let daysPerWeek = (r.is247 === true || r.is247 === 'TRUE') ? 7 : (r.days.split(',').filter(x=>x).length);
@@ -593,7 +596,6 @@
                  try{ shiftReqs = JSON.parse(s.reqs); }catch(e){}
 
                  sortedSen.forEach(sen => {
-                     // We base required headcount solely on ACTIVE requirements.
                      let count = parseInt(shiftReqs[sen.id]) || 0;
                      if(count > 0) {
                          if (r.type === 'Standby') {
@@ -606,6 +608,9 @@
                              let weeklyOnSiteHrs = hrs * count * daysPerWeek;
                              workings[sen.id].onSiteHrs += weeklyOnSiteHrs;
                              workings[sen.id].totalHrs += weeklyOnSiteHrs;
+                             
+                             // Calculate Reserve Shifts Need
+                             workings[sen.id].reserveShifts += (1 * daysPerWeek);
                          }
                      }
                  });
@@ -613,14 +618,26 @@
          });
 
          sortedSen.forEach(sen => {
-             workings[sen.id].requiredCount = Math.ceil(workings[sen.id].totalHrs / DUTY_HOURS_PER_PERSON_PER_WEEK);
+             let baseReq = Math.ceil(workings[sen.id].totalHrs / DUTY_HOURS_CAPACITY);
+             let resReq = Math.ceil(workings[sen.id].reserveShifts / EFFECTIVE_SHIFTS_PER_WEEK);
+             workings[sen.id].reserveHeadcount = resReq;
+             workings[sen.id].requiredCount = baseReq + resReq;
          });
 
          return `
          <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div class="mb-4">
-                 <h2 class="text-2xl font-bold text-white">Manpower Requirement Calculator</h2>
-                 <p class="text-zinc-300 text-sm mt-1">Mathematical framework mapping shift topology and standby activations to organizational hiring needs.</p>
+             <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+                 <div>
+                     <h2 class="text-2xl font-bold text-white">Manpower Requirement Calculator</h2>
+                     <p class="text-zinc-300 text-sm mt-1">Mathematical framework mapping shift topology and standby activations to organizational hiring needs.</p>
+                 </div>
+                 <div class="bg-zinc-900 border border-zinc-700 rounded-lg p-1.5 flex shadow-lg shrink-0">
+                     <select onchange="UI.state.viewMode = this.value; UI.render();" class="px-4 py-1.5 text-sm font-bold bg-zinc-800 border border-zinc-600 rounded text-white shadow-inner outline-none cursor-pointer">
+                         <option value="both" ${state.viewMode === 'both' ? 'selected' : ''}>View: Complete Overview</option>
+                         <option value="req" ${state.viewMode === 'req' ? 'selected' : ''}>View: Required Min. Only</option>
+                         <option value="act" ${state.viewMode === 'act' ? 'selected' : ''}>View: Current Headcount Only</option>
+                     </select>
+                 </div>
              </div>
 
              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -638,16 +655,16 @@
                                  <i data-lucide="user-check" class="w-5 h-5 text-indigo-400"></i> ${sen.name} Tier
                              </h3>
                              <div class="flex justify-between items-end">
-                                 <div>
+                                 <div class="${state.viewMode === 'req' ? 'hidden' : ''}">
                                      <div class="text-4xl font-black text-white">${act}</div>
                                      <div class="text-[11px] uppercase tracking-widest font-bold text-zinc-400 mt-2">Current Headcount</div>
                                  </div>
-                                 <div class="text-right">
-                                     <div class="text-2xl font-bold text-zinc-300">${req}</div>
+                                 <div class="text-right ${state.viewMode === 'act' ? 'hidden' : ''} ${state.viewMode === 'req' ? 'w-full text-left' : ''}">
+                                     <div class="text-3xl font-bold text-indigo-300">${req}</div>
                                      <div class="text-[11px] uppercase tracking-widest font-bold text-zinc-400 mt-2">Required Min.</div>
                                  </div>
                              </div>
-                             <div class="pt-5 mt-5 border-t border-zinc-700">
+                             <div class="pt-5 mt-5 border-t border-zinc-700 ${state.viewMode === 'both' ? '' : 'hidden'}">
                                  ${isDeficit 
                                      ? `<div class="text-red-400 font-bold text-sm flex items-center gap-2 bg-red-500/10 px-3 py-2 rounded border border-red-500/20"><i data-lucide="trending-down" class="w-5 h-5"></i> Deficit of ${Math.abs(diff)} personnel</div>`
                                      : `<div class="text-emerald-400 font-bold text-sm flex items-center gap-2 bg-emerald-500/10 px-3 py-2 rounded border border-emerald-500/20"><i data-lucide="trending-up" class="w-5 h-5"></i> Surplus of ${diff} personnel</div>`
@@ -656,24 +673,28 @@
                          </div>
                          
                          <!-- Formula Workings Breakdown -->
-                         <div class="p-5 bg-zinc-950/80 rounded-b-xl flex-1 border-t border-zinc-800">
-                             <div class="text-[10px] uppercase font-bold text-zinc-500 tracking-widest mb-3 flex items-center gap-1.5"><i data-lucide="function-square" class="w-3.5 h-3.5"></i> Actual Workings</div>
+                         <div class="p-5 bg-zinc-950/80 rounded-b-xl flex-1 border-t border-zinc-800 ${state.viewMode === 'both' ? '' : 'hidden'}">
+                             <div class="text-[10px] uppercase font-bold text-zinc-500 tracking-widest mb-3 flex items-center gap-1.5"><i data-lucide="function-square" class="w-3.5 h-3.5"></i> Mathematical Workings</div>
                              <div class="space-y-2 text-xs font-mono text-zinc-300">
                                  <div class="flex justify-between border-b border-zinc-800 pb-1">
                                      <span>On-Site Demand:</span>
                                      <span class="font-bold text-zinc-100">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
                                  </div>
                                  <div class="flex justify-between border-b border-zinc-800 pb-1 text-orange-200">
-                                     <span>Standby Activation Buffers:</span>
+                                     <span>Standby Buffers:</span>
                                      <span class="font-bold text-orange-100">+ ${w.standbyHrs.toFixed(1)} hrs/wk</span>
                                  </div>
-                                 <div class="flex justify-between pt-1 font-bold text-indigo-300">
-                                     <span>Total Roster Load:</span>
-                                     <span>${w.totalHrs.toFixed(1)} hrs/wk</span>
+                                 <div class="flex justify-between pt-1 text-indigo-300">
+                                     <span>Base Req. Headcount:</span>
+                                     <span class="font-bold">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
                                  </div>
-                                 <div class="flex justify-between mt-3 bg-indigo-500/10 p-2 rounded border border-indigo-500/20">
-                                     <span>Headcount Needed:</span>
-                                     <span class="font-bold">${w.totalHrs.toFixed(1)} ÷ 15 = ${req}</span>
+                                 <div class="flex justify-between pt-1 mt-1 border-t border-zinc-800 text-amber-300" title="Dedicated Headcount Pool for Reserve Duties">
+                                     <span>Dedicated Reserves:</span>
+                                     <span class="font-bold">+ ${w.reserveHeadcount}</span>
+                                 </div>
+                                 <div class="flex justify-between mt-3 bg-indigo-500/20 p-2 rounded border border-indigo-500/40 text-white">
+                                     <span>Total Headcount Needed:</span>
+                                     <span class="font-bold text-lg">${req}</span>
                                  </div>
                              </div>
                          </div>
@@ -728,14 +749,24 @@
                      </div>
                      <!-- Row 5 -->
                      <div class="p-5 flex items-start gap-4">
-                         <i data-lucide="check-circle-2" class="w-5 h-5 text-indigo-500 shrink-0 mt-0.5"></i>
+                         <i data-lucide="check-circle-2" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"></i>
+                         <div class="flex-1 flex flex-col md:flex-row md:items-center gap-4">
+                             <span class="font-bold text-white w-40 shrink-0">Dedicated Reserves:</span>
+                             <p>The system auto-generates 1 Reserve slot per active shift. <b>Reserve and Standby are completely separated pools</b>. While planned as a reserve, personnel do not accumulate pure working hours, but they require a dedicated headcount mathematically scaled by available presence.</p>
+                         </div>
+                     </div>
+                     <!-- Row 6 -->
+                     <div class="p-5 flex items-start gap-4 bg-indigo-500/5">
+                         <i data-lucide="calculator" class="w-5 h-5 text-indigo-400 shrink-0 mt-0.5"></i>
                          <div class="flex-1 flex flex-col md:flex-row md:items-center gap-4">
                              <span class="font-bold text-white w-40 shrink-0">Net Duty Capacity:</span>
-                             <p class="flex-1">Factoring in breaks, standard leaves, and Off-In-Lieus, the math yields a safe, usable capacity of</p>
-                             <div class="shrink-0 flex items-center justify-center">
-                                 <span class="bg-indigo-600 text-white font-bold py-1.5 px-3 rounded text-center whitespace-nowrap shadow-md border border-indigo-500 shadow-indigo-500/20">15 duty-hours<br>per person per week</span>
+                             <div class="flex-1 space-y-1 text-sm text-zinc-300">
+                                 <p><strong>Calculation:</strong> 365 Days - 104 Weekends - 11 SG Public Holidays - 40 Training - 18 Leave = <strong class="text-indigo-300">192 Available Work Days/Year</strong>.</p>
+                                 <p>At 44 hrs/week max cap across 38.4 effective weeks, a person yields ~32.5 hrs/week. Deducting standard baseline office presence yields a pure shift capacity of:</p>
                              </div>
-                             <p class="flex-1">beyond standard office operations. The Required Headcount formula divides Total Roster Load by this capacity.</p>
+                             <div class="shrink-0 flex items-center justify-center p-2.5 bg-indigo-600 border border-indigo-400 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+                                 <span class="text-white font-black text-center whitespace-nowrap leading-tight text-lg">15 duty-hours<br><span class="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">per person per week</span></span>
+                             </div>
                          </div>
                      </div>
                  </div>
@@ -781,7 +812,7 @@
                      <label class="block text-sm font-bold text-zinc-300 mb-2">Target Month / Year</label>
                      <input type="month" id="inpMonth" value="${ym}" onchange="UI.state.lastMonth = this.value; UI.render();" class="w-full px-4 py-2.5">
                  </div>
-                 <button onclick="window.handleGenerate()" class="bg-white text-zinc-900 px-6 py-2.5 rounded-lg font-bold hover:bg-zinc-200 transition-colors shadow-lg flex items-center gap-2">
+                 <button onclick="window.handleGenerate()" class="bg-white text-zinc-900 px-6 py-2.5 rounded-lg font-bold hover:bg-zinc-200 transition-colors shadow-lg flex items-center gap-2 border border-zinc-300">
                      <i data-lucide="cpu" class="w-5 h-5"></i> Execute Engine
                  </button>
              </div>
@@ -929,7 +960,6 @@
              return;
          }
 
-         // If 24/7 AND exactly 1 shift, the timing inputs are hidden and forced to full 24H implicitly.
          const hideTimings = (is247 && num === 1);
 
          let html = '';
@@ -946,7 +976,6 @@
                          <div class="text-xs font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 rounded uppercase tracking-wider flex items-center gap-2">
                             <i data-lucide="clock" class="w-4 h-4"></i> 24-Hour Continuous Shift Auto-Applied
                          </div>
-                         <!-- Hidden standard inputs to maintain backend parsing logic -->
                          <input type="hidden" id="sStart_${i}" value="00:00">
                          <input type="hidden" id="sEnd_${i}" value="00:00">
                      </div>
@@ -962,25 +991,14 @@
                      `}
                  </div>
                  
-                 <div class="border-t border-zinc-600/50 pt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                     <div class="bg-zinc-900/40 p-4 rounded-lg border border-zinc-700/50 shadow-inner">
-                         <label class="block text-[10px] font-bold text-emerald-400 mb-3 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="user-check" class="w-4 h-4"></i> Active Headcount</label>
+                 <div class="border-t border-zinc-600/50 pt-4">
+                     <div class="bg-zinc-900/40 p-4 rounded-lg border border-zinc-700/50 shadow-inner max-w-xl">
+                         <label class="block text-[10px] font-bold text-emerald-400 mb-3 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="user-check" class="w-4 h-4"></i> Active Headcount Needed</label>
                          <div class="flex flex-col gap-3">
                              ${sortedSen.map(sen => `
-                             <div class="flex items-center justify-between group">
+                             <div class="flex items-center justify-between group border-b border-zinc-700/50 pb-2 last:border-0 last:pb-0">
                                  <span class="text-xs text-zinc-300 font-bold">${sen.name}</span>
-                                 <input type="number" id="sReq_${sen.id}_${i}" value="0" min="0" class="w-16 bg-transparent text-white font-bold text-sm outline-none text-center">
-                             </div>
-                             `).join('')}
-                         </div>
-                     </div>
-                     <div class="bg-zinc-900/40 p-4 rounded-lg border border-zinc-700/50 shadow-inner">
-                         <label class="block text-[10px] font-bold text-amber-400 mb-3 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4"></i> Reserve Headcount</label>
-                         <div class="flex flex-col gap-3">
-                             ${sortedSen.map(sen => `
-                             <div class="flex items-center justify-between group">
-                                 <span class="text-xs text-zinc-300 font-bold">${sen.name}</span>
-                                 <input type="number" id="sResReq_${sen.id}_${i}" value="0" min="0" class="w-16 bg-transparent text-white font-bold text-sm outline-none text-center">
+                                 <input type="number" id="sReq_${sen.id}_${i}" value="0" min="0" class="w-16 bg-zinc-800 text-white font-bold text-sm outline-none text-center rounded border border-zinc-600 px-2 py-1">
                              </div>
                              `).join('')}
                          </div>
@@ -1002,9 +1020,8 @@
          const shifts = UI.state.data.shifts.filter(s => s.roleId === id);
          
          UI.state.editingRoleId = id;
-         UI.render(); // Re-render to show edit UI
+         UI.render(); 
          
-         // Wait for render to complete to populate DOM
          setTimeout(() => {
              document.getElementById('inpRoleName').value = role.name;
              document.getElementById('inpRoleType').value = role.type;
@@ -1024,7 +1041,7 @@
              });
              
              document.getElementById('inpNumShifts').value = shifts.length;
-             window.renderShiftInputs(); // Re-render shifts UI based on num & is247 status
+             window.renderShiftInputs();
              
              setTimeout(() => {
                  shifts.forEach((s, i) => {
@@ -1040,13 +1057,11 @@
                      try { reqs = JSON.parse(s.reqs); } catch(e){}
                      UI.state.data.seniorities.forEach(sen => {
                          const reqEl = document.getElementById(`sReq_${sen.id}_${idx}`);
-                         const resReqEl = document.getElementById(`sResReq_${sen.id}_${idx}`);
                          if(reqEl) reqEl.value = reqs[sen.id] || 0;
-                         if(resReqEl) resReqEl.value = reqs["reserve_" + sen.id] || 0;
                      });
                  });
-             }, 50); // wait for shift inputs injection
-         }, 50); // wait for root UI update
+             }, 50); 
+         }, 50); 
      };
 
      window.handleCancelEdit = () => {
@@ -1082,9 +1097,7 @@
              const shiftReqs = {};
              sortedSen.forEach(sen => {
                  const reqEl = document.getElementById(`sReq_${sen.id}_${i}`);
-                 const resReqEl = document.getElementById(`sResReq_${sen.id}_${i}`);
                  if(reqEl) { shiftReqs[sen.id] = parseInt(reqEl.value) || 0; }
-                 if(resReqEl) { shiftReqs["reserve_" + sen.id] = parseInt(resReqEl.value) || 0; }
              });
 
              if(!sn || !st || !se) return UI.showToast("Missing parameters in shift inputs.", "error");

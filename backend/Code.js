@@ -221,10 +221,6 @@ try {
         delete reqs[data.id];
         changed = true;
       }
-      if (reqs["reserve_" + data.id] !== undefined) {
-        delete reqs["reserve_" + data.id];
-        changed = true;
-      }
       if(changed) {
           sSheet.getRange(j + 1, 6).setValue(JSON.stringify(reqs));
       }
@@ -358,6 +354,26 @@ for (var i = existingData.length - 1; i >= 1; i--) {
   }
 }
 
+// Fetch Google Calendar Public Holidays for SG
+var phDates = {};
+try {
+  var cal = CalendarApp.getCalendarById('en.singapore#holiday@group.v.calendar.google.com');
+  if (cal) {
+    var nextMonth = new Date(year, month, 1);
+    var evs = cal.getEvents(new Date(year, month - 1, 1), nextMonth);
+    for(var idx = 0; idx < evs.length; idx++) {
+      var e = evs[idx];
+      if (e.isAllDayEvent()) {
+          var d = e.getStartTime();
+          var ds = Utilities.formatDate(d, "Asia/Singapore", "yyyy-MM-dd");
+          phDates[ds] = true;
+      }
+    }
+  }
+} catch (ex) {
+  // Silent fallback if calendar scope is missing or fails
+}
+
 // Load Data
 var seniorities = getTableData("Seniorities", ["id", "name", "order"]);
 var roles = getTableData("Roles", ["id", "name", "is247", "days", "type", "concurrentRoles"]);
@@ -369,12 +385,23 @@ var personnel = getTableData("Personnel", ["id", "name", "seniority"]);
 var senMap = {};
 seniorities.forEach(function(s) { senMap[s.id] = s.name; });
 
-// Role Map for quick access
+// Role Map for quick access & Standby Tag Check
 var roleMap = {};
+var standbyRoleIds = [];
 roles.forEach(function(r) {
   var cRoles = [];
   try { cRoles = JSON.parse(r.concurrentRoles || "[]"); } catch(e) {}
-  roleMap[r.id] = { type: r.type, concurrentRoles: cRoles };
+  roleMap[r.id] = { type: r.type, concurrentRoles: cRoles, is247: (r.is247 === true || r.is247 === "TRUE") };
+  if (r.type === 'Standby') standbyRoleIds.push(r.id);
+});
+
+// Build a map of people who are assigned to Standby roles
+var personStandbyMap = {};
+personnel.forEach(function(p) { personStandbyMap[p.id] = false; });
+tags.forEach(function(t) {
+    if (standbyRoleIds.indexOf(t.roleId) !== -1) {
+        personStandbyMap[t.personId] = true;
+    }
 });
 
 // Person Map & Pre-fill Normal Office Hours
@@ -390,11 +417,13 @@ personnel.forEach(function(p) {
     weeklyHours: {} 
   };
 
-  // Pre-populate standard office hours (Mon-Fri 0800-1730)
+  // Pre-populate standard office hours (Mon-Fri 0800-1730) excluding SG Public Holidays
   for (var d = 1; d <= daysInMonth; d++) {
     var cDate = new Date(year, month - 1, d);
     var dayOfWeek = cDate.getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) { 
+    var dStr = year + "-" + String(month).padStart(2,'0') + "-" + String(d).padStart(2,'0');
+    
+    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !phDates[dStr]) { 
       var sdt = new Date(year, month - 1, d, 8, 0, 0);
       var edt = new Date(year, month - 1, d, 17, 30, 0);
       var wk = getWeekKey(sdt);
@@ -404,7 +433,7 @@ personnel.forEach(function(p) {
         endDT: edt,
         durationH: 9.5, // 9.5 elapsed hours
         active: true,
-        dateStr: year + "-" + String(month).padStart(2,'0') + "-" + String(d).padStart(2,'0')
+        dateStr: dStr
       });
       personMap[p.id].weeklyHours[wk] = (personMap[p.id].weeklyHours[wk] || 0) + 9.5;
     }
@@ -419,72 +448,75 @@ for (var d = 1; d <= daysInMonth; d++) {
   var currentDate = new Date(year, month - 1, d);
   var dayStr = dayNames[currentDate.getDay()];
   var dateString = year + "-" + String(month).padStart(2,'0') + "-" + String(d).padStart(2,'0');
+  var isHoliday = phDates[dateString];
 
   roles.forEach(function(role) {
-    if (role.days.indexOf(dayStr) !== -1 || role.is247 === true || role.is247 === "TRUE") {
-      var roleShifts = shifts.filter(function(s) { return s.roleId === role.id; });
+    var is247 = roleMap[role.id].is247;
+    
+    // Skip if role doesn't run on this day, or if it's a holiday and role isn't 24/7
+    if (!is247 && role.days.indexOf(dayStr) === -1) return;
+    if (isHoliday && !is247) return;
+
+    var roleShifts = shifts.filter(function(s) { return s.roleId === role.id; });
+    
+    roleShifts.forEach(function(shift) {
+      var st = String(shift.start || "00:00").substring(0, 5); 
+      var et = String(shift.end || "00:00").substring(0, 5);
+      var startDT = new Date(dateString + "T" + st + ":00");
+      var endDT = new Date(dateString + "T" + et + ":00");
       
-      roleShifts.forEach(function(shift) {
-        var st = String(shift.start || "00:00").substring(0, 5); 
-        var et = String(shift.end || "00:00").substring(0, 5);
-        var startDT = new Date(dateString + "T" + st + ":00");
-        var endDT = new Date(dateString + "T" + et + ":00");
-        
-        // Fix for strict 24 hour shift starting at 00:00 and ending at 00:00
-        if (endDT <= startDT) {
-            endDT.setDate(endDT.getDate() + 1);
-        }
-        
-        var reqs = {};
-        try { reqs = JSON.parse(shift.reqs || "{}"); } catch(e){}
+      // Fix for strict 24 hour shift starting at 00:00 and ending at 00:00
+      if (endDT <= startDT) {
+          endDT.setDate(endDT.getDate() + 1);
+      }
+      
+      var reqs = {};
+      try { reqs = JSON.parse(shift.reqs || "{}"); } catch(e){}
 
-        var durationH = (endDT.getTime() - startDT.getTime()) / 3600000;
+      var durationH = (endDT.getTime() - startDT.getTime()) / 3600000;
 
-        // Generate a slot for each required headcount per dynamic seniority ID
-        seniorities.forEach(function(senObj) {
-           // 1. Active Headcount Requirements
-           var count = parseInt(reqs[senObj.id]) || 0;
-           for (var c = 0; c < count; c++) {
-              allSlots.push({
-                dateString: dateString,
-                roleId: role.id,
-                roleName: role.name,
-                shiftName: shift.name,
-                startDT: startDT,
-                endDT: endDT,
-                reqSeniorityId: senObj.id,
-                reqSeniorityName: senObj.name,
-                durationH: durationH,
-                isReserve: false
-              });
-           }
-           
-           // 2. Reserve Headcount Requirements
-           var reserveCount = parseInt(reqs["reserve_" + senObj.id]) || 0;
-           for (var rc = 0; rc < reserveCount; rc++) {
-               allSlots.push({
-                dateString: dateString,
-                roleId: role.id,
-                roleName: role.name,
-                shiftName: shift.name + " (Reserve)",
-                startDT: startDT,
-                endDT: endDT,
-                reqSeniorityId: senObj.id,
-                reqSeniorityName: senObj.name,
-                durationH: durationH,
-                isReserve: true
-              });
-           }
-        });
+      seniorities.forEach(function(senObj) {
+         var count = parseInt(reqs[senObj.id]) || 0;
+         
+         // 1. Active Slots
+         for (var c = 0; c < count; c++) {
+            allSlots.push({
+              dateString: dateString,
+              roleId: role.id,
+              roleName: role.name,
+              shiftName: shift.name,
+              startDT: startDT,
+              endDT: endDT,
+              reqSeniorityId: senObj.id,
+              reqSeniorityName: senObj.name,
+              durationH: durationH,
+              isReserve: false
+            });
+         }
+         
+         // 2. Automatic Reserve Slots
+         // The base assumption is that every ON-SITE role must have a reserve catered per shift per seniority
+         if (count > 0 && role.type !== 'Standby') {
+             allSlots.push({
+              dateString: dateString,
+              roleId: role.id,
+              roleName: role.name,
+              shiftName: shift.name + " (Reserve)",
+              startDT: startDT,
+              endDT: endDT,
+              reqSeniorityId: senObj.id,
+              reqSeniorityName: senObj.name,
+              durationH: durationH,
+              isReserve: true
+            });
+         }
       });
-    }
+    });
   });
 }
 
 // Sort all slots:
-// 1. We must process ALL Active Shifts first (isReserve == false) so they take priority 
-//    for availability and dictate structural constraints like 11-hour rest correctly.
-//    Reserves are sorted to the bottom.
+// 1. Process ALL Active Shifts first (isReserve == false) so they dictate structural constraints like 11-hour rest and trigger OILs correctly.
 // 2. Secondary sort by Date/Time
 allSlots.sort(function(a, b) {
     if (a.isReserve !== b.isReserve) {
@@ -506,14 +538,26 @@ allSlots.forEach(function(slot) {
   possibleCandidates.forEach(function(pId) {
     var person = personMap[pId];
     if (!person) return;
-    if (person.seniorityId !== slot.reqSeniorityId) return; // Exact match required based on DB ID
+    if (person.seniorityId !== slot.reqSeniorityId) return; // Exact match required
 
     var canWork = true;
     var blocksToWaive = []; 
     
+    // "Reserve and standby are dedicated headcount and not shared between both"
+    if (slot.isReserve && personStandbyMap[pId]) {
+        return; // Skip candidates assigned to any Standby role
+    }
+
     for (var j = 0; j < person.blocks.length; j++) {
       var b = person.blocks[j];
-      if (!b.active) continue;
+      if (!b.active) {
+          // "When personnel are on off-in-lieu, they must not be placed on reserve."
+          if (slot.isReserve && b.type === 'office' && b.dateStr === slot.dateString) {
+              canWork = false;
+              break;
+          }
+          continue;
+      }
 
       var isOverlap = (slot.startDT < b.endDT && slot.endDT > b.startDT);
       var hoursBetweenEndStart = Math.abs(b.startDT.getTime() - slot.endDT.getTime()) / 3600000;
@@ -521,12 +565,7 @@ allSlots.forEach(function(slot) {
       var violatesRest = false;
 
       if (slot.isReserve) {
-          // ==============================
-          // RESERVE SLOT CONSTRAINTS
-          // ==============================
-          // 1. Ignore Rest Rule completely
-          // 2. If it overlaps with an existing shift or another reserve duty, enforce concurrency.
-          // 3. Overlaps with Office Duty DO NOT cause any violations.
+          // Reserve duty ignores 11-hour rest against office duty, but checks concurrency matrix against other shifts
           if (b.type === 'shift' || b.type === 'reserve') {
               if (isOverlap) {
                   var existingRoleData = roleMap[b.roleId];
@@ -538,11 +577,7 @@ allSlots.forEach(function(slot) {
               }
           }
       } else {
-          // ==============================
-          // ACTIVE SHIFT CONSTRAINTS
-          // ==============================
-          // 1. Direct overlap always flags rest violation.
-          // 2. Less than 11 hours apart flags rest violation.
+          // Active shift enforces strict 11 hour rest
           if (isOverlap) {
               violatesRest = true;
           } else if (slot.startDT >= b.endDT && hoursBetweenStartEnd < 11) {
@@ -585,8 +620,7 @@ allSlots.forEach(function(slot) {
        var waivedHours = 0;
        blocksToWaive.forEach(function(wb) { waivedHours += wb.durationH; });
        
-       // Standby roles or Reserve duties carry a scheduling cost of 0 towards the 44-hour statutory cap limit
-       // since working hours are generated dynamically through random activations.
+       // Standby and Reserve roles carry 0 scheduling cost towards statutory max limit
        var shiftCost = (rData.type === 'Standby' || slot.isReserve) ? 0 : slot.durationH;
        
        if ((currentWkHrs - waivedHours + shiftCost) <= 44) {
@@ -619,8 +653,6 @@ allSlots.forEach(function(slot) {
 
     pData.weeklyHours[selected.wk] = (pData.weeklyHours[selected.wk] || 0) + selected.shiftCost;
     
-    // Reserve time isn't penalized into totalDutyMinutes until activated, 
-    // but to distribute reserve duties evenly, we give a marginal sort weight bump.
     pData.totalDutyMinutes += (slot.isReserve ? 1 : (slot.durationH * 60));
     
     pData.blocks.push({
@@ -629,7 +661,8 @@ allSlots.forEach(function(slot) {
         startDT: slot.startDT,
         endDT: slot.endDT,
         durationH: slot.durationH,
-        active: true
+        active: true,
+        dateStr: slot.dateString
     });
 
     assignedPersonName = pData.name;
