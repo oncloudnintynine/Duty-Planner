@@ -68,6 +68,7 @@
              selectedPersonId: null,
              editingRoleId: null,
              viewMode: 'both',
+             activeModal: null,
              data: { seniorities: [], personnel: [], roles: [], shifts: [], tags: [], schedule: [] }
          },
          
@@ -182,7 +183,7 @@
      // ==============================================
      function AppTemplate(state) {
          return `
-         <div class="flex h-screen overflow-hidden">
+         <div class="flex h-screen overflow-hidden relative">
              ${Sidebar(state)}
              <main class="flex-1 overflow-y-auto bg-zinc-950 p-8">
                  <div class="max-w-6xl mx-auto pb-12">
@@ -195,6 +196,7 @@
              </main>
          </div>
          ${state.loading ? Loader() : ''}
+         ${InfoModal(state)}
          `;
      }
 
@@ -225,6 +227,62 @@
                  `).join('')}
              </nav>
          </aside>
+         `;
+     }
+     
+     function InfoModal(state) {
+         if (!state.activeModal) return '';
+         const modalData = {
+             'onSite': { 
+                 title: 'On-Site Demand', 
+                 desc: 'Calculates the total weekly hours required to man all active on-site shifts.', 
+                 example: 'A 12-hour shift running 7 days a week requires 84 hours of coverage per week (12 × 7). If this requires 2 personnel per shift, it becomes 168 hours/week.' 
+             },
+             'standby': { 
+                 title: 'Standby Buffers', 
+                 desc: 'Standby roles do not accumulate rigid schedule hours until activated. To account for this in manpower planning, the framework applies a statistical buffer.', 
+                 example: 'Assuming an average of 2 on-site rectifications (24 hours each) per month. This adds a standardized load of ~12 duty-hours per week per assigned standby headcount (pro-rated to working days).' 
+             },
+             'baseReq': { 
+                 title: 'Base Req. Headcount', 
+                 desc: 'The number of personnel needed to cover the total operational hours (On-Site + Standby).', 
+                 example: 'Total Hours (e.g., 120 hrs) ÷ Net Duty Capacity (15 hrs/person/week) = 8 Base Headcount. The 15-hour capacity is derived from the 44-hour statutory weekly limit minus standard office presence.' 
+             },
+             'reserve': { 
+                 title: 'Dedicated Reserves', 
+                 desc: 'Reserve duties require physical availability but do not accrue direct working hours unless activated. Therefore, they are calculated by shift blocks, not hours.', 
+                 example: '1 Reserve per shift × 7 days = 7 reserve shifts/week. A single person has an effective presence of ~3.682 shifts/week (192 available working days/year ÷ 52.14 weeks). 7 ÷ 3.682 = ~1.9, which rounds up to 2 Dedicated Reserves.' 
+             },
+             'totalReq': {
+                 title: 'Total Headcount Needed',
+                 desc: 'The absolute final headcount required for this seniority tier, summing the base operations and the dedicated reserve pool.',
+                 example: '8 Base Headcount + 2 Dedicated Reserves = 10 Total Headcount Needed.'
+             }
+         };
+         
+         const data = modalData[state.activeModal];
+         if (!data) return '';
+         
+         return `
+         <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+             <div class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm transition-opacity" onclick="window.closeModal()"></div>
+             <div class="relative bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+                 <div class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/50">
+                     <h3 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="info" class="w-5 h-5 text-indigo-400"></i> ${data.title}</h3>
+                     <button onclick="window.closeModal()" class="text-zinc-400 hover:text-white transition-colors p-1 outline-none"><i data-lucide="x" class="w-5 h-5"></i></button>
+                 </div>
+                 <div class="p-6 space-y-4 text-sm text-zinc-300">
+                     <p class="leading-relaxed">${data.desc}</p>
+                     <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 text-indigo-200">
+                         <strong class="text-indigo-400 block mb-1 uppercase tracking-wider text-xs">Example / Breakdown</strong>
+                         ${data.example}
+                     </div>
+                 </div>
+                 <div class="p-4 border-t border-zinc-800 bg-zinc-950/50 flex justify-end">
+                     <button onclick="window.closeModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2.5 rounded-lg font-bold transition-colors text-sm border border-zinc-700 shadow-sm outline-none">Dismiss</button>
+                 </div>
+             </div>
+         </div>
          `;
      }
 
@@ -676,26 +734,47 @@
                          <div class="p-5 bg-zinc-950/80 rounded-b-xl flex-1 border-t border-zinc-800">
                              <div class="text-[10px] uppercase font-bold text-zinc-500 tracking-widest mb-3 flex items-center gap-1.5"><i data-lucide="function-square" class="w-3.5 h-3.5"></i> Mathematical Workings</div>
                              <div class="space-y-2 text-xs font-mono text-zinc-300">
-                                 <div class="flex justify-between border-b border-zinc-800 pb-1">
-                                     <span>On-Site Demand:</span>
+                                 
+                                 <div class="flex justify-between border-b border-zinc-800 pb-1.5 items-center">
+                                     <div class="flex items-center">
+                                         <span>On-Site Demand:</span>
+                                         <button onclick="window.openModal('onSite')" class="text-zinc-500 hover:text-indigo-400 transition-colors ml-1.5 focus:outline-none" title="View Info"><i data-lucide="help-circle" class="w-3.5 h-3.5"></i></button>
+                                     </div>
                                      <span class="font-bold text-zinc-100">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
                                  </div>
-                                 <div class="flex justify-between border-b border-zinc-800 pb-1 text-orange-200">
-                                     <span>Standby Buffers:</span>
+                                 
+                                 <div class="flex justify-between border-b border-zinc-800 pb-1.5 pt-1.5 items-center text-orange-200">
+                                     <div class="flex items-center">
+                                         <span>Standby Buffers:</span>
+                                         <button onclick="window.openModal('standby')" class="text-zinc-500 hover:text-orange-400 transition-colors ml-1.5 focus:outline-none" title="View Info"><i data-lucide="help-circle" class="w-3.5 h-3.5"></i></button>
+                                     </div>
                                      <span class="font-bold text-orange-100">+ ${w.standbyHrs.toFixed(1)} hrs/wk</span>
                                  </div>
-                                 <div class="flex justify-between pt-1 text-indigo-300">
-                                     <span>Base Req. Headcount:</span>
+                                 
+                                 <div class="flex justify-between border-b border-zinc-800 pb-1.5 pt-1.5 items-center text-indigo-300">
+                                     <div class="flex items-center">
+                                         <span>Base Req. Headcount:</span>
+                                         <button onclick="window.openModal('baseReq')" class="text-indigo-500 hover:text-indigo-400 transition-colors ml-1.5 focus:outline-none" title="View Info"><i data-lucide="help-circle" class="w-3.5 h-3.5"></i></button>
+                                     </div>
                                      <span class="font-bold">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
                                  </div>
-                                 <div class="flex justify-between pt-1 mt-1 border-t border-zinc-800 text-amber-300" title="Dedicated Headcount Pool for Reserve Duties">
-                                     <span>Dedicated Reserves:</span>
+                                 
+                                 <div class="flex justify-between pt-1.5 items-center text-amber-300">
+                                     <div class="flex items-center">
+                                         <span>Dedicated Reserves:</span>
+                                         <button onclick="window.openModal('reserve')" class="text-amber-600 hover:text-amber-400 transition-colors ml-1.5 focus:outline-none" title="View Info"><i data-lucide="help-circle" class="w-3.5 h-3.5"></i></button>
+                                     </div>
                                      <span class="font-bold">+ ${w.reserveHeadcount}</span>
                                  </div>
-                                 <div class="flex justify-between mt-3 bg-indigo-500/20 p-2 rounded border border-indigo-500/40 text-white">
-                                     <span>Total Headcount Needed:</span>
+                                 
+                                 <div class="flex justify-between mt-3 bg-indigo-500/20 p-2 rounded border border-indigo-500/40 text-white items-center">
+                                     <div class="flex items-center">
+                                         <span>Total Headcount Needed:</span>
+                                         <button onclick="window.openModal('totalReq')" class="text-indigo-400 hover:text-white transition-colors ml-1.5 focus:outline-none" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                     </div>
                                      <span class="font-bold text-lg">${req}</span>
                                  </div>
+                                 
                              </div>
                          </div>
                      </div>
@@ -884,6 +963,16 @@
      window.switchTab = (tab) => { 
          UI.state.activeTab = tab; 
          UI.render(); 
+     };
+
+     window.openModal = (key) => {
+         UI.state.activeModal = key;
+         UI.render();
+     };
+     
+     window.closeModal = () => {
+         UI.state.activeModal = null;
+         UI.render();
      };
 
      // Settings
