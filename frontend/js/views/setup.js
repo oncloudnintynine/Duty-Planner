@@ -61,11 +61,11 @@ function SharedSetupForm(state, isMobile) {
                ${state.data.roles.length > 0 ? `
                <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 w-full">
                    <label class="block text-xs font-bold text-zinc-900 dark:text-white mb-3 uppercase tracking-widest flex items-center gap-2"><i data-lucide="git-merge" class="w-4 h-4 text-indigo-500 dark:text-indigo-400"></i> Concurrency Matrix</label>
-                   <div class="flex flex-wrap gap-2 w-full">
+                   <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 w-full">
                        ${state.data.roles.map(r => `
-                           <label class="flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 px-3 py-2 rounded-lg cursor-pointer hover:border-indigo-400 transition-colors shadow-sm">
+                           <label class="flex items-center gap-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 px-3 py-2.5 rounded-lg cursor-pointer hover:border-indigo-400 transition-colors shadow-sm w-full sm:w-auto">
                                <input type="checkbox" value="${r.id}" class="role-concurrent-cb w-4 h-4 rounded bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500 shrink-0">
-                               <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wide truncate max-w-[150px]">${r.name}</span>
+                               <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wide whitespace-normal leading-snug">${r.name}</span>
                            </label>
                        `).join('')}
                    </div>
