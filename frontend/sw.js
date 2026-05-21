@@ -1,4 +1,4 @@
-const CACHE_NAME = 'duty-planner-v5';
+const CACHE_NAME = 'duty-planner-v6';
 const urlsToCache = [
   './index.html',
   './manifest.json',
@@ -11,7 +11,8 @@ const urlsToCache = [
   './js/views/manage.js',
   './js/views/roster.js',
   './js/views/calculator.js',
-  './js/views/settings.js'
+  './js/views/settings.js',
+  './js/components/shared.js'
 ];
 
 self.addEventListener('install', event => {

@@ -2,7 +2,7 @@ import { API } from './api.js';
 
 export const UI = {
     state: {
-        isMobile: window.innerWidth < 1024, // Separation Breakpoint
+        isMobile: window.innerWidth < 1024,
         activeTab: 'setup',
         loading: false,
         lastMonth: '',
@@ -16,8 +16,6 @@ export const UI = {
     
     init() {
         this.dispatch('sync');
-        
-        // Listen for screen size changes to switch UI Paradigms dynamically
         window.addEventListener('resize', () => {
             const currentIsMobile = window.innerWidth < 1024;
             if (currentIsMobile !== this.state.isMobile) {
@@ -36,20 +34,12 @@ export const UI = {
         
         try {
             const json = await API.post(action, payload);
-            
             if (json.status === 'success') {
                 this.state.data = json.data;
                 if (json.message) this.showToast(json.message, 'success');
-                
-                if (action === 'deletePerson' && payload.id === this.state.selectedPersonId) {
-                    this.state.selectedPersonId = null;
-                }
-                if (action === 'updateRole' || action === 'addRole') {
-                    this.state.editingRoleId = null;
-                }
-                if (action === 'deleteRole' && payload.id === this.state.editingRoleId) {
-                    this.state.editingRoleId = null;
-                }
+                if (action === 'deletePerson' && payload.id === this.state.selectedPersonId) this.state.selectedPersonId = null;
+                if (action === 'updateRole' || action === 'addRole') this.state.editingRoleId = null;
+                if (action === 'deleteRole' && payload.id === this.state.editingRoleId) this.state.editingRoleId = null;
             } else {
                 this.showToast(json.message || "An error occurred", 'error');
             }
@@ -68,26 +58,17 @@ export const UI = {
         const isErr = type === 'error';
         const toastHtml = `
         <div id="toast-container" class="fixed top-safe pt-4 left-1/2 -translate-x-1/2 lg:top-auto lg:bottom-8 lg:left-auto lg:right-8 lg:translate-x-0 z-[200] animate-in slide-in-from-top-8 lg:slide-in-from-bottom-8 fade-in duration-300 w-[92%] lg:w-auto max-w-md">
-            <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
-                <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-6 h-6 shrink-0 ${isErr ? 'text-white' : 'text-emerald-500'}"></i>
+            <div class="${isErr ? 'bg-red-600 dark:bg-red-500 text-white' : 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white'} px-5 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200 dark:border-zinc-700'}">
+                <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-6 h-6 shrink-0 ${isErr ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}"></i>
                 <span class="flex-1 leading-relaxed">${msg}</span>
             </div>
         </div>
         `;
         document.body.insertAdjacentHTML('beforeend', toastHtml);
         if (window.lucide) window.lucide.createIcons();
-        
-        setTimeout(() => {
-            const t = document.getElementById('toast-container');
-            if (t) {
-                t.style.opacity = '0';
-                t.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => t.remove(), 300);
-            }
-        }, 3000);
+        setTimeout(() => { const t = document.getElementById('toast-container'); if (t) { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s ease'; setTimeout(() => t.remove(), 300); } }, 3000);
     },
-    
-    render: () => {} // Bound in app.js
+    render: () => {} 
 };
 
 // Global Handlers
@@ -100,6 +81,27 @@ window.switchTab = (tab) => {
     UI.render(); 
 };
 
+window.toggleTheme = () => {
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.style.setProperty('color-scheme', 'light');
+        localStorage.setItem('theme', 'light');
+    } else {
+        html.classList.add('dark');
+        html.style.setProperty('color-scheme', 'dark');
+        localStorage.setItem('theme', 'dark');
+    }
+};
+
+window.updateApp = async () => {
+    UI.showToast("Updating App to latest version...", "success");
+    if ('serviceWorker' in navigator) {
+        try { const regs = await navigator.serviceWorker.getRegistrations(); for (let r of regs) { await r.unregister(); } } catch(e) {}
+    }
+    setTimeout(() => { window.location.reload(true); }, 1000);
+};
+
 window.openModal = (key) => { UI.state.activeModal = key; UI.render(); };
 window.closeModal = () => { UI.state.activeModal = null; UI.render(); };
 
@@ -107,3 +109,4 @@ export function getSeniorityName(id, state) {
     const s = state.data.seniorities.find(x => x.id === id);
     return s ? s.name : 'Unassigned';
 }
+window.getSeniorityName = getSeniorityName;

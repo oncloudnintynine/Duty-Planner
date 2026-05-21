@@ -1,20 +1,33 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
  <meta charset="UTF-8">
  <!-- Strict Viewport to lock scaling and map perfectly to physical device width -->
  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
- <meta name="theme-color" content="#18181b">
  <meta name="apple-mobile-web-app-capable" content="yes">
  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  <title>DutyPlanner</title>
  <link rel="manifest" href="./manifest.json">
  
+ <!-- Immediate FOUC Prevention Script -->
+ <script>
+    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.setProperty('color-scheme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.style.setProperty('color-scheme', 'light');
+    }
+ </script>
+
  <script src="https://cdn.tailwindcss.com"></script>
+ <script>
+     tailwind.config = { darkMode: 'class' }
+ </script>
  <script src="https://unpkg.com/lucide@latest"></script>
  <link rel="stylesheet" href="./css/styles.css">
 </head>
-<body class="bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-indigo-500/30">
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased selection:bg-indigo-500/30">
 
  <div id="app" class="w-full h-full max-w-full overflow-hidden"></div>
 
