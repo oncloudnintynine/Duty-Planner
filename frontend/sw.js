@@ -1,4 +1,4 @@
-const CACHE_NAME = 'duty-planner-v8';
+const CACHE_NAME = 'duty-planner-v9';
 const urlsToCache = [
  './index.html',
  './manifest.json',

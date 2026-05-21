@@ -145,24 +145,74 @@ function Loader() {
 
 function InfoModal(state) {
    if (!state.activeModal) return '';
+   
    const m = {
-       'onSite': { title: 'On-Site Demand', text: `Weekly hours to man active shifts.<br><span class="text-indigo-600 dark:text-indigo-400">E.g., 12hr × 7 days × 2 pax = 168 hrs/wk.</span>` },
-       'standby': { title: 'Standby Buffers', text: `Buffer for call-ups.<br><span class="text-orange-600 dark:text-orange-400">Assume 2 activations/mo × 24 hrs = ~12 hrs/wk per headcount.</span>` },
-       'baseReq': { title: 'Base Headcount', text: `Total operational hours ÷ single person's net capacity <span class="text-indigo-600 dark:text-indigo-400">(15 hrs/wk)</span>.` },
-       'reserve': { title: 'Dedicated Reserves', text: `Calculated by shifts, not hours.<br><span class="text-amber-600 dark:text-amber-400">1 Reserve/shift × 7 days = 7 shifts/wk. ÷ 3.682 effective shifts/person = 2 Pax.</span>` },
-       'totalReq': { title: 'Total Needed', text: `Base operations personnel + Dedicated reserve pool.` }
+       'onSite': { 
+           title: 'On-Site Demand', 
+           text: `
+           <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-4 leading-relaxed font-medium">Total weekly operational hours required to fulfill all active shifts based on role configuration.</p>
+           <div class="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-xl shadow-inner">
+               <div class="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-2">Calculation Formula</div>
+               <div class="font-mono text-indigo-700 dark:text-indigo-300 text-[13px] font-semibold flex flex-col gap-1">
+                   <span>[Shift Hrs] × [Active Days]</span>
+                   <span class="text-indigo-400 dark:text-indigo-500">× [Required Pax]</span>
+               </div>
+           </div>
+           <p class="mt-4 text-[12px] text-zinc-500 dark:text-zinc-400 italic">E.g., 12hr shift × 7 days × 2 pax = 168 hrs/week.</p>` 
+       },
+       'standby': { 
+           title: 'Standby Buffers', 
+           text: `
+           <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-4 leading-relaxed font-medium">Statistical buffer allocated for personnel assigned to Standby (on-call) roles.</p>
+           <div class="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 p-4 rounded-xl shadow-inner">
+               <div class="text-[10px] font-black uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-2">Base Assumption</div>
+               <div class="font-mono text-orange-700 dark:text-orange-300 text-[13px] font-semibold">2 Activations/mo × 24 hrs</div>
+               <div class="text-orange-500 dark:text-orange-400 text-xs my-2">÷ 4 weeks</div>
+               <div class="font-mono text-orange-700 dark:text-orange-300 text-[13px] font-semibold border-t border-orange-200 dark:border-orange-500/30 pt-2">= ~12 hrs/week per headcount</div>
+           </div>` 
+       },
+       'baseReq': { 
+           title: 'Base Headcount', 
+           text: `
+           <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-4 leading-relaxed font-medium">The minimum number of personnel needed to run core operations without breaching statutory limits.</p>
+           <div class="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-4 rounded-xl shadow-inner">
+               <div class="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">Calculation Formula</div>
+               <div class="font-mono text-emerald-700 dark:text-emerald-300 text-[13px] font-semibold">[Total Ops Hours] ÷ [15 hrs/wk]</div>
+           </div>
+           <p class="mt-4 text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed"><strong class="text-zinc-700 dark:text-zinc-300">15 hrs/week</strong> is the effective individual capacity after deducting standard office hours, leave, training, and 44hr MOM bounds.</p>` 
+       },
+       'reserve': { 
+           title: 'Dedicated Reserves', 
+           text: `
+           <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-4 leading-relaxed font-medium">Reserves are calculated by active shifts required, not raw hours, ensuring coverage for every slot.</p>
+           <div class="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl shadow-inner">
+               <div class="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">Calculation Formula</div>
+               <div class="font-mono text-amber-700 dark:text-amber-300 text-[13px] font-semibold">[Total Reserve Shifts] ÷ [3.68]</div>
+           </div>
+           <p class="mt-4 text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">Assumes 1 Reserve mapped per active shift.<br>Effective capacity = 192 shifts/year (<strong class="text-zinc-700 dark:text-zinc-300">3.68 shifts/week</strong>).</p>` 
+       },
+       'totalReq': { 
+           title: 'Total Needed', 
+           text: `
+           <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-4 leading-relaxed font-medium">The final recommended headcount for this specific seniority level.</p>
+           <div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 p-4 rounded-xl shadow-inner flex flex-col items-center justify-center gap-2">
+               <span class="font-bold text-blue-700 dark:text-blue-300 text-sm">Base Operations</span>
+               <i data-lucide="plus" class="w-4 h-4 text-blue-500"></i>
+               <span class="font-bold text-blue-700 dark:text-blue-300 text-sm">Dedicated Reserves</span>
+           </div>` 
+       }
    };
    
    const data = m[state.activeModal] || m['onSite'];
    
    return `
    <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 pb-20">
-       <div class="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/80 backdrop-blur-sm transition-opacity" onclick="window.closeModal()"></div>
+       <div class="absolute inset-0 bg-zinc-900/60 dark:bg-zinc-950/80 backdrop-blur-sm transition-opacity" onclick="window.closeModal()"></div>
        <div class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm animate-in zoom-in-95 fade-in flex flex-col overflow-hidden">
            <div class="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50">
                <h3 class="text-base font-black text-zinc-900 dark:text-white flex items-center gap-2.5 uppercase tracking-wide"><i data-lucide="info" class="w-5 h-5 text-indigo-500 dark:text-indigo-400"></i> ${data.title}</h3>
            </div>
-           <div class="p-6 overflow-y-auto text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed bg-white dark:bg-zinc-900 font-medium">
+           <div class="p-6 overflow-y-auto bg-white dark:bg-zinc-900">
                ${data.text}
            </div>
            <div class="p-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 flex justify-end">
