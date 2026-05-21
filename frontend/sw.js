@@ -1,7 +1,18 @@
-const CACHE_NAME = 'duty-planner-v1';
+const CACHE_NAME = 'duty-planner-v2';
 const urlsToCache = [
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './css/styles.css',
+  './js/config.js',
+  './js/api.js',
+  './js/store.js',
+  './js/components/shared.js',
+  './js/views/setup.js',
+  './js/views/manage.js',
+  './js/views/roster.js',
+  './js/views/calculator.js',
+  './js/views/settings.js',
+  './js/app.js'
 ];
 
 self.addEventListener('install', event => {
@@ -27,9 +38,8 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Return cached response if found, otherwise fetch from network
         return response || fetch(event.request).catch(() => {
-          // Fallback mechanism if network fails (optional, depending on requirements)
+          // Fallback mechanism if network fails
         });
       })
   );
