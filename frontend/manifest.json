@@ -1,0 +1,21 @@
+{
+  "name": "Duty Planner",
+  "short_name": "DutyPlanner",
+  "description": "Organizational Manpower and Heuristic Roster Engine",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#18181b",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/shield-check.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/shield-check.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
