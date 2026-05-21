@@ -5,12 +5,11 @@ import { ManpowerCalculatorView } from '../views/calculator.js';
 import { AdvancedSettingsView } from '../views/settings.js';
 
 export function AppTemplate(state) {
+    // Structural constraints min-w-0 absolutely halt flexbox children expanding the screen width past 100vw
     return `
-    <div class="flex flex-col md:flex-row h-[100dvh] w-full max-w-[100vw] overflow-hidden relative bg-zinc-950">
+    <div class="flex flex-col md:flex-row h-[100dvh] w-full overflow-hidden relative bg-zinc-950 pt-safe">
         ${Sidebar(state)}
-        
-        <!-- The min-w-0 classes structurally halt flexbox items from expanding the screen width -->
-        <main class="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden pb-[80px] md:pb-0 w-full relative">
+        <main class="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden pb-[90px] md:pb-0 w-full relative hide-scroll">
             <div class="p-4 sm:p-6 md:p-8 w-full max-w-6xl mx-auto min-w-0">
                 ${state.activeTab === 'setup' ? SetupView(state) : ''}
                 ${state.activeTab === 'manage' ? ManageView(state) : ''}
@@ -19,7 +18,6 @@ export function AppTemplate(state) {
                 ${state.activeTab === 'settings' ? AdvancedSettingsView(state) : ''}
             </div>
         </main>
-        
         ${MobileNav(state)}
     </div>
     ${state.loading ? Loader() : ''}
@@ -30,9 +28,9 @@ export function AppTemplate(state) {
 function Sidebar(state) {
     const tabs = [
         { id: 'setup', name: 'Topology & Setup', icon: 'database' },
-        { id: 'manage', name: 'Personnel & Assignments', icon: 'users' },
+        { id: 'manage', name: 'Personnel', icon: 'users' },
         { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' },
-        { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' },
+        { id: 'calc', name: 'Calculator', icon: 'calculator' },
         { id: 'settings', name: 'Advanced Settings', icon: 'settings' }
     ];
     return `
@@ -42,12 +40,12 @@ function Sidebar(state) {
                 <i data-lucide="shield-check" class="w-5 h-5"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold text-white leading-tight">DutyPlanner</h1>
+                <h1 class="text-lg font-black text-white leading-tight uppercase tracking-wider">DutyPlanner</h1>
             </div>
         </div>
         <nav class="flex-1 p-4 space-y-2">
             ${tabs.map(t => `
-                <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent outline-none">
+                <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent outline-none">
                     <i data-lucide="${t.icon}" class="w-5 h-5"></i>
                     ${t.name}
                 </button>
@@ -67,12 +65,12 @@ function MobileNav(state) {
     ];
     
     return `
-    <div class="md:hidden fixed bottom-0 left-0 right-0 w-full max-w-[100vw] bg-zinc-900 border-t border-zinc-800 z-40 pb-safe shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
+    <div class="md:hidden fixed bottom-0 left-0 right-0 w-full bg-zinc-900 border-t border-zinc-800 z-40 pb-safe shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
         <div class="flex justify-around items-center h-[72px] px-1">
             ${tabs.map(t => `
                 <button onclick="window.switchTab('${t.id}')" class="mobile-tab-btn flex-1 flex flex-col items-center justify-center gap-1.5 transition-colors ${state.activeTab === t.id ? 'active text-indigo-400' : 'text-zinc-500'} outline-none">
                     <i data-lucide="${t.icon}" class="w-[22px] h-[22px] ${state.activeTab === t.id ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''}"></i>
-                    <span class="text-[10px] font-bold tracking-wide uppercase">${t.name}</span>
+                    <span class="text-[10px] font-black tracking-widest uppercase">${t.name}</span>
                 </button>
             `).join('')}
         </div>
@@ -82,7 +80,7 @@ function MobileNav(state) {
 
 function Loader() {
     return `
-    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center animate-in fade-in duration-200 w-full h-full">
+    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[300] flex flex-col items-center justify-center animate-in fade-in duration-200 w-full h-full">
         <div class="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-6 shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
         <p class="text-indigo-300 font-black tracking-widest text-sm uppercase animate-pulse">Syncing Database...</p>
     </div>

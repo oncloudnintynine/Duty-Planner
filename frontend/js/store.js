@@ -19,7 +19,7 @@ export const UI = {
 
     async dispatch(action, payload = {}) {
         this.state.loading = true;
-        this.render(); // Re-render triggers loading overlay
+        this.render(); 
         
         try {
             const json = await API.post(action, payload);
@@ -55,7 +55,7 @@ export const UI = {
         
         const isErr = type === 'error';
         const toastHtml = `
-        <div id="toast-container" class="fixed top-6 left-1/2 -translate-x-1/2 md:top-auto md:bottom-8 md:left-auto md:right-8 md:translate-x-0 z-[200] animate-in slide-in-from-top-8 md:slide-in-from-bottom-8 fade-in duration-300 w-[92%] md:w-auto max-w-md">
+        <div id="toast-container" class="fixed top-safe pt-4 left-1/2 -translate-x-1/2 md:top-auto md:bottom-8 md:left-auto md:right-8 md:translate-x-0 z-[200] animate-in slide-in-from-top-8 md:slide-in-from-bottom-8 fade-in duration-300 w-[92%] md:w-auto max-w-md">
             <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
                 <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-6 h-6 shrink-0 ${isErr ? 'text-white' : 'text-emerald-500'}"></i>
                 <span class="flex-1 leading-relaxed">${msg}</span>
@@ -79,11 +79,13 @@ export const UI = {
     render: () => {} 
 };
 
-// Expose Core Functions globally so inline HTML strings can trigger logic
+// Global Exposure for strictly inline HTML Event Listeners
 window.UI = UI;
 
 window.switchTab = (tab) => { 
-    UI.state.activeTab = tab; 
+    UI.state.activeTab = tab;
+    UI.state.selectedPersonId = null; // Reset sub-views
+    UI.state.editingRoleId = null;
     UI.render(); 
 };
 

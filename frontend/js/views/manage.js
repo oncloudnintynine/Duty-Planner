@@ -9,14 +9,15 @@ export function ManageView(state) {
     const selPerson = state.data.personnel.find(p => p.id === state.selectedPersonId);
     
     return `
-    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col w-full min-w-0">
-        <div class="mb-2 shrink-0">
+    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col w-full min-w-0 relative">
+        
+        <!-- Mobile Master/Detail Flow Handlers -->
+        <div class="mb-2 shrink-0 ${selPerson ? 'hidden lg:block' : 'block'}">
             <h2 class="text-2xl font-black text-white tracking-wide uppercase">Personnel Assignments</h2>
             <p class="text-zinc-400 text-sm mt-1">Manage workforce, update seniority levels, and map capabilities.</p>
         </div>
 
-        <!-- Add Personnel Quick Bar -->
-        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 sm:p-5 flex flex-col xl:flex-row gap-5 xl:items-center shadow-xl shrink-0 w-full min-w-0">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 sm:p-5 flex flex-col xl:flex-row gap-5 xl:items-center shadow-xl shrink-0 w-full min-w-0 ${selPerson ? 'hidden lg:flex' : 'flex'}">
             <div class="flex-1 flex flex-col sm:flex-row gap-3 w-full min-w-0">
                 <input type="text" id="inpNewPerson" class="flex-1 px-4 py-3.5 sm:py-3 text-base font-bold rounded-xl outline-none" placeholder="Add single person (e.g. Jane Doe)">
                 <select id="inpNewSeniority" class="px-4 py-3.5 sm:py-3 text-sm font-bold w-full sm:w-auto rounded-xl bg-zinc-800 outline-none">
@@ -32,9 +33,10 @@ export function ManageView(state) {
             </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-6 flex-1 w-full pb-6 lg:pb-0 min-w-0">
-            <!-- Left List: Fuzzy Search -->
-            <div class="w-full lg:w-1/3 bg-zinc-900 border border-zinc-700 rounded-2xl flex flex-col shadow-xl shrink-0 h-[40vh] lg:h-auto overflow-hidden min-w-0">
+        <div class="flex flex-col lg:flex-row gap-6 flex-1 w-full pb-6 lg:pb-0 min-w-0 relative">
+            
+            <!-- Left List: Dynamic hidden on mobile if person is selected -->
+            <div class="${selPerson ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 bg-zinc-900 border border-zinc-700 rounded-2xl flex-col shadow-xl shrink-0 h-[60vh] lg:h-auto overflow-hidden min-w-0">
                 <div class="p-4 border-b border-zinc-800 bg-zinc-800/80 shrink-0">
                     <div class="relative">
                         <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500"></i>
@@ -43,7 +45,7 @@ export function ManageView(state) {
                 </div>
                 <div class="flex-1 overflow-y-auto hide-scroll p-3 space-y-2 bg-zinc-950/30">
                     ${filteredPersonnel.map(p => `
-                        <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-5 py-4 rounded-xl flex items-center justify-between group transition-all ${state.selectedPersonId === p.id ? 'bg-indigo-500/20 border-indigo-500/50 shadow-md transform scale-[1.02]' : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800/80'} border outline-none">
+                        <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-5 py-4 rounded-xl flex items-center justify-between group transition-all ${state.selectedPersonId === p.id ? 'bg-indigo-500/20 border-indigo-500/50 shadow-md transform scale-[1.02]' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/80'} outline-none">
                             <div class="min-w-0 pr-2">
                                 <div class="font-black text-base truncate ${state.selectedPersonId === p.id ? 'text-indigo-300' : 'text-zinc-200'}">${p.name}</div>
                                 <div class="text-[10px] tracking-widest uppercase font-black text-zinc-500 mt-1">${getSeniorityName(p.seniority, state)}</div>
@@ -56,7 +58,7 @@ export function ManageView(state) {
             </div>
 
             <!-- Right Detail Panel -->
-            <div class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex flex-col relative overflow-hidden w-full lg:min-h-[500px] min-w-0">
+            <div class="${!selPerson ? 'hidden lg:flex' : 'flex'} flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex-col relative overflow-hidden w-full lg:min-h-[500px] min-w-0 animate-in slide-in-from-right-4 lg:slide-in-from-bottom-4 duration-300">
                 ${!selPerson ? `
                     <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 pointer-events-none p-6 text-center">
                         <i data-lucide="user-square-2" class="w-20 h-20 sm:w-24 sm:h-24 mb-6 text-zinc-500"></i>
@@ -65,11 +67,15 @@ export function ManageView(state) {
                 ` : `
                     <div class="p-5 sm:p-6 border-b border-zinc-800 bg-zinc-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 shadow-sm w-full min-w-0">
                         <div class="w-full sm:w-auto min-w-0">
-                            <h2 class="text-2xl sm:text-3xl font-black text-white mb-1.5 tracking-wide truncate">${selPerson.name}</h2>
+                            <!-- Mobile Back Button -->
+                            <button onclick="window.clearSelection()" class="lg:hidden mb-4 text-indigo-400 hover:text-indigo-300 flex items-center gap-2 font-black text-xs uppercase tracking-widest border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 rounded-lg shadow-sm outline-none">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Roster
+                            </button>
+                            <h2 class="text-2xl sm:text-3xl font-black text-white mb-1.5 tracking-wide truncate w-full">${selPerson.name}</h2>
                             <p class="text-[10px] sm:text-xs text-zinc-500 font-mono font-bold uppercase tracking-widest">Sys ID: ${selPerson.id.substring(0,8)}...</p>
                         </div>
                         <button onclick="UI.dispatch('deletePerson', {id: '${selPerson.id}'})" class="w-full sm:w-auto shrink-0 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 px-5 py-3 sm:py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 uppercase tracking-wide shadow-sm outline-none">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i> Remove File
+                            <i data-lucide="trash-2" class="w-5 h-5"></i> Remove File
                         </button>
                     </div>
 
@@ -123,6 +129,11 @@ export function ManageView(state) {
 }
 
 // BIND LOGIC
+window.clearSelection = () => {
+    UI.state.selectedPersonId = null;
+    UI.render();
+};
+
 window.handleAddPerson = () => {
     const val = document.getElementById('inpNewPerson').value.trim();
     const seniority = document.getElementById('inpNewSeniority').value;

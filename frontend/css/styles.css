@@ -1,6 +1,6 @@
 html, body {
-    overscroll-behavior-y: none; /* Prevents pull-to-refresh bounce on mobile */
-    -webkit-text-size-adjust: 100%; /* Prevents text scaling on orientation change */
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
     margin: 0;
     padding: 0;
     width: 100vw;
@@ -35,8 +35,18 @@ select {
     border-radius: 0.5rem;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
     transition: all 0.2s ease-in-out;
-    min-height: 44px; /* Essential touch target size for mobile */
-    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    min-height: 48px; /* Strict touch target size */
+    font-size: 16px !important; /* Forces iOS not to auto-zoom on field focus */
+}
+
+/* Remove default spinner buttons on number inputs for clean UI */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
 }
 
 /* Optimize selection dropdowns on mobile */
@@ -62,23 +72,10 @@ input:focus, select:focus {
 }
 
 ::placeholder {
-    color: #a1a1aa !important; 
+    color: #71717a !important; 
     opacity: 1 !important;
 }
 
-/* Checkbox distinct styling optimized for touch */
-input[type="checkbox"] {
-    border: 2px solid #71717a !important;
-    background-color: #1f1f22 !important;
-    cursor: pointer;
-    min-width: 24px;
-    min-height: 24px;
-}
-
-input[type="checkbox"]:checked {
-    border-color: #818cf8 !important;
-    background-color: #818cf8 !important;
-}
-
-/* Fix safe areas for iPhones */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+/* PWA Safe areas to prevent docking overlap on modern phones */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
