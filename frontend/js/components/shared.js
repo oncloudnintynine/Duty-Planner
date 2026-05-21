@@ -1,10 +1,17 @@
-// Shared Application Layout Components
-function AppTemplate(state) {
+import { SetupView } from '../views/setup.js';
+import { ManageView } from '../views/manage.js';
+import { RosterView } from '../views/roster.js';
+import { ManpowerCalculatorView } from '../views/calculator.js';
+import { AdvancedSettingsView } from '../views/settings.js';
+
+export function AppTemplate(state) {
     return `
-    <div class="flex h-[100dvh] overflow-hidden relative bg-zinc-950 w-full">
+    <div class="flex flex-col md:flex-row h-[100dvh] w-full max-w-[100vw] overflow-hidden relative bg-zinc-950">
         ${Sidebar(state)}
-        <main class="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-0 w-full relative">
-            <div class="p-4 sm:p-6 md:p-8 w-full max-w-6xl mx-auto">
+        
+        <!-- The min-w-0 classes structurally halt flexbox items from expanding the screen width -->
+        <main class="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden pb-[80px] md:pb-0 w-full relative">
+            <div class="p-4 sm:p-6 md:p-8 w-full max-w-6xl mx-auto min-w-0">
                 ${state.activeTab === 'setup' ? SetupView(state) : ''}
                 ${state.activeTab === 'manage' ? ManageView(state) : ''}
                 ${state.activeTab === 'roster' ? RosterView(state) : ''}
@@ -12,6 +19,7 @@ function AppTemplate(state) {
                 ${state.activeTab === 'settings' ? AdvancedSettingsView(state) : ''}
             </div>
         </main>
+        
         ${MobileNav(state)}
     </div>
     ${state.loading ? Loader() : ''}
@@ -22,9 +30,9 @@ function AppTemplate(state) {
 function Sidebar(state) {
     const tabs = [
         { id: 'setup', name: 'Topology & Setup', icon: 'database' },
-        { id: 'manage', name: 'Personnel', icon: 'users' },
+        { id: 'manage', name: 'Personnel & Assignments', icon: 'users' },
         { id: 'roster', name: 'Roster Engine', icon: 'calendar-days' },
-        { id: 'calc', name: 'Calculator', icon: 'calculator' },
+        { id: 'calc', name: 'Manpower Calculator', icon: 'calculator' },
         { id: 'settings', name: 'Advanced Settings', icon: 'settings' }
     ];
     return `
@@ -39,7 +47,7 @@ function Sidebar(state) {
         </div>
         <nav class="flex-1 p-4 space-y-2">
             ${tabs.map(t => `
-                <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent">
+                <button onclick="window.switchTab('${t.id}')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${state.activeTab === t.id ? 'active' : (t.id === 'settings' ? 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200')} border-r-2 border-transparent outline-none">
                     <i data-lucide="${t.icon}" class="w-5 h-5"></i>
                     ${t.name}
                 </button>
@@ -59,12 +67,12 @@ function MobileNav(state) {
     ];
     
     return `
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-        <div class="flex justify-around items-center h-[72px]">
+    <div class="md:hidden fixed bottom-0 left-0 right-0 w-full max-w-[100vw] bg-zinc-900 border-t border-zinc-800 z-40 pb-safe shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
+        <div class="flex justify-around items-center h-[72px] px-1">
             ${tabs.map(t => `
-                <button onclick="window.switchTab('${t.id}')" class="mobile-tab-btn flex-1 flex flex-col items-center justify-center gap-1.5 transition-colors ${state.activeTab === t.id ? 'active text-indigo-400' : 'text-zinc-500'}">
-                    <i data-lucide="${t.icon}" class="w-6 h-6 ${state.activeTab === t.id ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''}"></i>
-                    <span class="text-[10px] font-bold tracking-wide">${t.name}</span>
+                <button onclick="window.switchTab('${t.id}')" class="mobile-tab-btn flex-1 flex flex-col items-center justify-center gap-1.5 transition-colors ${state.activeTab === t.id ? 'active text-indigo-400' : 'text-zinc-500'} outline-none">
+                    <i data-lucide="${t.icon}" class="w-[22px] h-[22px] ${state.activeTab === t.id ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''}"></i>
+                    <span class="text-[10px] font-bold tracking-wide uppercase">${t.name}</span>
                 </button>
             `).join('')}
         </div>
@@ -74,7 +82,7 @@ function MobileNav(state) {
 
 function Loader() {
     return `
-    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center animate-in fade-in duration-200">
+    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center animate-in fade-in duration-200 w-full h-full">
         <div class="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-6 shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
         <p class="text-indigo-300 font-black tracking-widest text-sm uppercase animate-pulse">Syncing Database...</p>
     </div>
@@ -206,7 +214,7 @@ function InfoModal(state) {
     if (!data) return '';
     
     return `
-    <div class="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-6 pb-24 md:pb-6">
+    <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 sm:p-6 pb-24 md:pb-6">
         <div class="absolute inset-0 bg-zinc-950/85 backdrop-blur-sm transition-opacity" onclick="window.closeModal()"></div>
         <div class="relative bg-zinc-900 border border-zinc-700 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)] w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-200 flex flex-col max-h-full">
             <div class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/80 shrink-0">
@@ -217,7 +225,7 @@ function InfoModal(state) {
                 ${data.htmlContent}
             </div>
             <div class="p-5 border-t border-zinc-800 bg-zinc-950/90 flex justify-end shrink-0">
-                <button onclick="window.closeModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 sm:py-3 rounded-xl font-black transition-colors text-sm shadow-md outline-none uppercase tracking-widest border border-indigo-500/50">Acknowledge</button>
+                <button onclick="window.closeModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 sm:py-3 rounded-xl font-black transition-colors text-sm shadow-md outline-none uppercase tracking-widest border border-indigo-500/50">Acknowledge</button>
             </div>
         </div>
     </div>

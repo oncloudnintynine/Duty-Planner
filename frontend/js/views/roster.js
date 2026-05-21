@@ -1,4 +1,6 @@
-function RosterView(state) {
+import { UI } from '../store.js';
+
+export function RosterView(state) {
     const ym = document.getElementById('inpMonth')?.value || state.lastMonth || "";
     let scheduleRows = [];
     if(ym) {
@@ -22,7 +24,7 @@ function RosterView(state) {
     };
 
     return `
-    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full h-full flex flex-col">
+    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full h-full flex flex-col min-w-0">
         <div class="mb-2 shrink-0">
             <h2 class="text-2xl font-black text-white tracking-wide uppercase">Heuristic Roster Engine</h2>
             <p class="text-zinc-400 text-sm mt-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 leading-relaxed">
@@ -32,19 +34,19 @@ function RosterView(state) {
             </p>
         </div>
 
-        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col sm:flex-row items-end gap-4 sm:gap-6 shrink-0 w-full">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col sm:flex-row items-end gap-4 sm:gap-6 shrink-0 w-full min-w-0">
             <div class="flex-1 w-full sm:max-w-sm">
                 <label class="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-widest">Target Month / Year</label>
                 <input type="month" id="inpMonth" value="${ym}" onchange="UI.state.lastMonth = this.value; UI.render();" class="w-full px-4 py-3.5 sm:py-3 font-bold rounded-xl bg-[#18181b] border-2 border-zinc-600 focus:border-indigo-400 text-white outline-none">
             </div>
-            <button onclick="window.handleGenerate()" class="bg-indigo-600 text-white px-8 py-3.5 sm:py-3 rounded-xl font-black hover:bg-indigo-500 transition-colors shadow-lg flex items-center justify-center gap-3 w-full sm:w-auto uppercase tracking-wide border border-indigo-500/50">
+            <button onclick="window.handleGenerate()" class="bg-indigo-600 text-white px-8 py-3.5 sm:py-3 rounded-xl font-black hover:bg-indigo-500 transition-colors shadow-lg flex items-center justify-center gap-3 w-full sm:w-auto uppercase tracking-wide border border-indigo-500/50 outline-none">
                 <i data-lucide="cpu" class="w-5 h-5"></i> Execute Engine
             </button>
         </div>
 
-        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl flex flex-col shadow-xl flex-1 overflow-hidden min-h-[500px] w-full">
-            <div class="overflow-x-auto flex-1 relative hide-scroll w-full">
-                <table class="w-full text-left text-sm text-zinc-300 whitespace-nowrap min-w-[800px]">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl flex flex-col shadow-xl flex-1 overflow-hidden min-h-[500px] w-full min-w-0">
+            <div class="overflow-x-auto flex-1 relative hide-scroll w-full min-w-0">
+                <table class="w-full text-left text-sm text-zinc-300 whitespace-nowrap min-w-[750px]">
                     <thead class="bg-zinc-800 text-zinc-300 text-xs uppercase sticky top-0 z-10 border-b border-zinc-700/80 shadow-sm font-black tracking-wider">
                         <tr>
                             <th class="px-6 py-5">Date</th>
@@ -94,6 +96,7 @@ function RosterView(state) {
     `;
 }
 
+// BIND LOGIC
 window.handleGenerate = () => {
     const ym = document.getElementById('inpMonth').value;
     if(!ym) return UI.showToast("Select a valid month to execute engine.", "error");

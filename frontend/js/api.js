@@ -1,5 +1,6 @@
-// Centralized API Interaction Logic
-const API = {
+import { CONFIG } from './config.js';
+
+export const API = {
     async post(action, payload = {}) {
         try {
             const res = await fetch(CONFIG.API_URL, {

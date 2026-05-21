@@ -1,5 +1,6 @@
-// State Management and Dispatch Engine
-const UI = {
+import { API } from './api.js';
+
+export const UI = {
     state: {
         activeTab: 'setup',
         loading: false,
@@ -18,7 +19,7 @@ const UI = {
 
     async dispatch(action, payload = {}) {
         this.state.loading = true;
-        this.render();
+        this.render(); // Re-render triggers loading overlay
         
         try {
             const json = await API.post(action, payload);
@@ -27,7 +28,7 @@ const UI = {
                 this.state.data = json.data;
                 if (json.message) this.showToast(json.message, 'success');
                 
-                // State cleanup rules
+                // State cleanup routing
                 if (action === 'deletePerson' && payload.id === this.state.selectedPersonId) {
                     this.state.selectedPersonId = null;
                 }
@@ -54,7 +55,7 @@ const UI = {
         
         const isErr = type === 'error';
         const toastHtml = `
-        <div id="toast-container" class="fixed top-8 left-1/2 -translate-x-1/2 md:top-auto md:bottom-8 md:left-auto md:right-8 md:translate-x-0 z-[110] animate-in slide-in-from-top-8 md:slide-in-from-bottom-8 fade-in duration-300 w-[90%] md:w-auto max-w-sm">
+        <div id="toast-container" class="fixed top-6 left-1/2 -translate-x-1/2 md:top-auto md:bottom-8 md:left-auto md:right-8 md:translate-x-0 z-[200] animate-in slide-in-from-top-8 md:slide-in-from-bottom-8 fade-in duration-300 w-[92%] md:w-auto max-w-md">
             <div class="${isErr ? 'bg-red-500 text-white' : 'bg-white text-zinc-900'} px-5 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200'}">
                 <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-6 h-6 shrink-0 ${isErr ? 'text-white' : 'text-emerald-500'}"></i>
                 <span class="flex-1 leading-relaxed">${msg}</span>
@@ -74,45 +75,12 @@ const UI = {
         }, 3000);
     },
     
-    render() {
-        const activeEl = document.activeElement;
-        const activeId = activeEl ? activeEl.id : null;
-        let cursorStart = null;
-        let cursorEnd = null;
-
-        if (activeId && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-            try {
-                cursorStart = activeEl.selectionStart;
-                cursorEnd = activeEl.selectionEnd;
-            } catch (e) {} 
-        }
-
-        document.getElementById('app').innerHTML = AppTemplate(this.state);
-        if (window.lucide) window.lucide.createIcons();
-
-        if (this.state.activeTab === 'setup' && !this.state.editingRoleId) {
-            if (typeof window.renderShiftInputs === 'function') {
-                window.renderShiftInputs();
-            }
-        }
-
-        if (activeId) {
-            const restoredEl = document.getElementById(activeId);
-            if (restoredEl) {
-                restoredEl.focus();
-                if (cursorStart !== null && cursorEnd !== null) {
-                    try { restoredEl.setSelectionRange(cursorStart, cursorEnd); } catch (e) {}
-                }
-            }
-        }
-    }
+    // Abstract hook populated in app.js
+    render: () => {} 
 };
 
-// Global Helpers
-function getSeniorityName(id, state) {
-    const s = state.data.seniorities.find(x => x.id === id);
-    return s ? s.name : 'Unassigned';
-}
+// Expose Core Functions globally so inline HTML strings can trigger logic
+window.UI = UI;
 
 window.switchTab = (tab) => { 
     UI.state.activeTab = tab; 
@@ -128,3 +96,9 @@ window.closeModal = () => {
     UI.state.activeModal = null;
     UI.render();
 };
+
+export function getSeniorityName(id, state) {
+    const s = state.data.seniorities.find(x => x.id === id);
+    return s ? s.name : 'Unassigned';
+}
+window.getSeniorityName = getSeniorityName;

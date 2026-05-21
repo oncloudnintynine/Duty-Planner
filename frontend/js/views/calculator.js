@@ -1,4 +1,6 @@
-function ManpowerCalculatorView(state) {
+import { UI } from '../store.js';
+
+export function ManpowerCalculatorView(state) {
     const sortedSen = [...state.data.seniorities].sort((a,b) => a.order - b.order);
     const existingCount = {};
     sortedSen.forEach(s => existingCount[s.id] = 0);
@@ -53,14 +55,14 @@ function ManpowerCalculatorView(state) {
     });
 
     return `
-    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
+    <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-4 w-full">
             <div>
                 <h2 class="text-2xl font-black text-white tracking-wide uppercase">Manpower Calculator</h2>
                 <p class="text-zinc-400 text-sm mt-1">Mathematical framework mapping shift topology and standby activations to organizational hiring needs.</p>
             </div>
             <div class="bg-[#18181b] border border-zinc-700 rounded-xl p-1.5 flex shadow-xl shrink-0 w-full lg:w-auto">
-                <select onchange="UI.state.viewMode = this.value; UI.render();" class="w-full px-5 py-3 lg:py-2.5 text-sm font-black bg-zinc-800 border border-zinc-600 rounded-lg text-white shadow-inner outline-none cursor-pointer uppercase tracking-wider">
+                <select onchange="UI.state.viewMode = this.value; UI.render();" class="w-full px-5 py-3 lg:py-2 text-sm font-black bg-zinc-800 border border-zinc-600 rounded-lg text-white shadow-inner outline-none cursor-pointer uppercase tracking-wider">
                     <option value="both" ${state.viewMode === 'both' ? 'selected' : ''}>View: Complete Overview</option>
                     <option value="req" ${state.viewMode === 'req' ? 'selected' : ''}>View: Required Min. Only</option>
                     <option value="act" ${state.viewMode === 'act' ? 'selected' : ''}>View: Current Headcount Only</option>
@@ -68,7 +70,7 @@ function ManpowerCalculatorView(state) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full min-w-0">
             ${sortedSen.map(sen => {
                 const w = workings[sen.id];
                 const req = w.requiredCount;
@@ -77,18 +79,18 @@ function ManpowerCalculatorView(state) {
                 const isDeficit = diff < 0;
                 
                 return `
-                <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex flex-col overflow-hidden w-full transition-transform hover:-translate-y-1 duration-300">
+                <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex flex-col overflow-hidden w-full min-w-0 transition-transform hover:-translate-y-1 duration-300">
                     <div class="p-5 sm:p-6 border-b border-zinc-700/50 bg-zinc-800/80">
                         <h3 class="text-zinc-200 text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
                             <i data-lucide="user-check" class="w-5 h-5 text-indigo-400"></i> ${sen.name} Tier
                         </h3>
                         <div class="flex justify-between items-end">
                             <div class="${state.viewMode === 'req' ? 'hidden' : ''}">
-                                <div class="text-4xl sm:text-5xl font-black text-white">${act}</div>
+                                <div class="text-5xl font-black text-white">${act}</div>
                                 <div class="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-500 mt-2">Current Headcount</div>
                             </div>
                             <div class="text-right ${state.viewMode === 'act' ? 'hidden' : ''} ${state.viewMode === 'req' ? 'w-full text-left' : ''}">
-                                <div class="text-3xl sm:text-4xl font-black text-indigo-300">${req}</div>
+                                <div class="text-4xl font-black text-indigo-300">${req}</div>
                                 <div class="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-500 mt-2">Required Min.</div>
                             </div>
                         </div>
@@ -101,48 +103,48 @@ function ManpowerCalculatorView(state) {
                     </div>
                     
                     <!-- Formula Workings Breakdown -->
-                    <div class="p-5 sm:p-6 bg-zinc-950/80 flex-1 border-t border-zinc-800 ${state.viewMode === 'both' ? '' : 'hidden'}">
+                    <div class="p-5 sm:p-6 bg-zinc-950/80 flex-1 border-t border-zinc-800 ${state.viewMode === 'both' ? '' : 'hidden'} min-w-0">
                         <div class="text-[10px] uppercase font-black text-zinc-500 tracking-widest mb-5 flex items-center gap-1.5"><i data-lucide="function-square" class="w-4 h-4"></i> Mathematical Workings</div>
                         <div class="space-y-4 text-xs sm:text-sm font-mono text-zinc-300">
                             
                             <div class="flex justify-between border-b border-zinc-800 pb-3 items-center group">
                                 <div class="flex items-center">
                                     <span>On-Site Demand:</span>
-                                    <button onclick="window.openModal('onSite')" class="text-zinc-500 hover:text-indigo-400 transition-colors ml-2 bg-zinc-800 rounded p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                    <button onclick="window.openModal('onSite')" class="text-zinc-500 hover:text-indigo-400 transition-colors ml-2 bg-zinc-800 rounded-lg p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="font-bold text-zinc-100">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
+                                <span class="font-bold text-zinc-100 bg-zinc-900 px-2 py-1 rounded border border-zinc-800">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
                             </div>
                             
                             <div class="flex justify-between border-b border-zinc-800 pb-3 pt-1 items-center text-orange-200 group">
                                 <div class="flex items-center">
                                     <span>Standby Buffers:</span>
-                                    <button onclick="window.openModal('standby')" class="text-orange-500/50 hover:text-orange-400 transition-colors ml-2 bg-zinc-800 rounded p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                    <button onclick="window.openModal('standby')" class="text-orange-500/50 hover:text-orange-400 transition-colors ml-2 bg-zinc-800 rounded-lg p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="font-bold text-orange-100">+ ${w.standbyHrs.toFixed(1)} hrs/wk</span>
+                                <span class="font-bold text-orange-100 bg-orange-500/10 px-2 py-1 rounded border border-orange-500/20">+ ${w.standbyHrs.toFixed(1)} hrs/wk</span>
                             </div>
                             
                             <div class="flex justify-between border-b border-zinc-800 pb-3 pt-1 items-center text-indigo-300 group">
                                 <div class="flex items-center">
                                     <span>Base Req. Headcount:</span>
-                                    <button onclick="window.openModal('baseReq')" class="text-indigo-500/50 hover:text-indigo-400 transition-colors ml-2 bg-zinc-800 rounded p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                    <button onclick="window.openModal('baseReq')" class="text-indigo-500/50 hover:text-indigo-400 transition-colors ml-2 bg-zinc-800 rounded-lg p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="font-bold bg-indigo-500/10 px-2 py-1 rounded">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
+                                <span class="font-bold bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
                             </div>
                             
                             <div class="flex justify-between pt-1 items-center text-amber-300 group">
                                 <div class="flex items-center">
                                     <span>Dedicated Reserves:</span>
-                                    <button onclick="window.openModal('reserve')" class="text-amber-500/50 hover:text-amber-400 transition-colors ml-2 bg-zinc-800 rounded p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                    <button onclick="window.openModal('reserve')" class="text-amber-500/50 hover:text-amber-400 transition-colors ml-2 bg-zinc-800 rounded-lg p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="font-bold text-base bg-amber-500/10 px-2 py-1 rounded">+ ${w.reserveHeadcount}</span>
+                                <span class="font-bold text-base bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">+ ${w.reserveHeadcount}</span>
                             </div>
                             
                             <div class="flex justify-between mt-5 bg-indigo-500/20 p-4 sm:p-5 rounded-xl border border-indigo-500/40 text-white items-center shadow-lg">
                                 <div class="flex items-center">
                                     <span class="uppercase tracking-widest font-black text-xs sm:text-sm">Total Needed:</span>
-                                    <button onclick="window.openModal('totalReq')" class="text-indigo-400 hover:text-white transition-colors ml-2 bg-indigo-500/30 rounded p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+                                    <button onclick="window.openModal('totalReq')" class="text-indigo-400 hover:text-white transition-colors ml-2 bg-indigo-500/30 rounded-lg p-1 focus:outline-none shadow-sm" title="View Info"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="font-black text-2xl sm:text-3xl drop-shadow-md">${req}</span>
+                                <span class="font-black text-2xl sm:text-3xl drop-shadow-md bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">${req}</span>
                             </div>
                             
                         </div>
