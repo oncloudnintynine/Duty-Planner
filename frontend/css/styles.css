@@ -24,7 +24,7 @@ html, body {
 }
 .mobile-tab-btn.active { color: #818cf8; }
 
-/* ENHANCED INPUT VISIBILITY & MOBILE TAP TARGETS */
+/* ENHANCED INPUT VISIBILITY & MASSIVE MOBILE TAP TARGETS */
 input[type="text"], 
 input[type="number"], 
 input[type="time"], 
@@ -33,14 +33,16 @@ select {
     color: #ffffff !important;
     background-color: #18181b !important; 
     border: 2px solid #52525b !important; 
-    border-radius: 0.5rem;
+    border-radius: 0.75rem; /* Smoother, larger curves */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
     transition: all 0.2s ease-in-out;
-    min-height: 48px; 
-    font-size: 16px !important; /* Prevents auto-zoom on iOS */
+    min-height: 52px; /* Extremely generous touch target */
+    font-size: 16px !important; /* Prevents iOS auto-zoom rigidly */
     width: 100%;
+    padding: 0.75rem 1rem !important; /* Forces inner spacing */
 }
 
+/* Eliminate default spinner buttons on number inputs for clean UI */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -48,13 +50,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 input[type="number"] { -moz-appearance: textfield; }
 
+/* Optimize selection dropdowns on mobile */
 select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.75rem center;
+    background-position: right 1rem center;
     background-repeat: no-repeat;
-    background-size: 1.25em 1.25em;
-    padding-right: 2.5rem !important;
+    background-size: 1.5em 1.5em;
+    padding-right: 3rem !important; /* Prevent text clipping under the chevron */
+}
+
+input:hover, select:hover {
+    border-color: #a1a1aa !important; 
+    background-color: #27272a !important;
 }
 
 input:focus, select:focus {
@@ -66,6 +74,21 @@ input:focus, select:focus {
 
 ::placeholder { color: #71717a !important; opacity: 1 !important; }
 
-/* Safe areas */
+/* Checkbox distinct styling optimized for chunky thumbs */
+input[type="checkbox"] {
+    border: 2px solid #71717a !important;
+    background-color: #1f1f22 !important;
+    cursor: pointer;
+    min-width: 28px;
+    min-height: 28px;
+    border-radius: 0.5rem;
+}
+
+input[type="checkbox"]:checked {
+    border-color: #818cf8 !important;
+    background-color: #818cf8 !important;
+}
+
+/* PWA Safe areas */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }

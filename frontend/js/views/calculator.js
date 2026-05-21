@@ -47,11 +47,14 @@ function SharedCalcForm(state) {
     });
 
     return `
-    <div class="space-y-6 w-full">
-        <div class="flex flex-col lg:flex-row justify-between lg:items-end mb-4 gap-4 w-full">
-            <div><h2 class="text-2xl font-black text-white uppercase">Manpower Calculator</h2></div>
-            <div class="bg-[#18181b] border border-zinc-700 rounded-xl p-1.5 w-full lg:w-auto">
-                <select onchange="UI.state.viewMode = this.value; UI.render();" class="w-full px-5 py-3 text-sm font-black uppercase tracking-wider text-center-last border-none outline-none">
+    <div class="space-y-6 w-full min-w-0">
+        <div class="flex flex-col lg:flex-row justify-between lg:items-end mb-6 gap-5 w-full">
+            <div>
+                <h2 class="text-3xl font-black text-white uppercase tracking-wide">Manpower Calculator</h2>
+                <p class="text-sm text-zinc-400 mt-2">Mathematical framework mapping topology to hiring needs.</p>
+            </div>
+            <div class="bg-[#18181b] border border-zinc-700 rounded-xl p-2 w-full lg:w-auto shadow-xl">
+                <select onchange="UI.state.viewMode = this.value; UI.render();" class="w-full px-5 py-3.5 text-sm font-black uppercase tracking-widest text-center-last border-none outline-none">
                     <option value="both" ${state.viewMode === 'both' ? 'selected' : ''}>Complete Overview</option>
                     <option value="req" ${state.viewMode === 'req' ? 'selected' : ''}>Required Min. Only</option>
                     <option value="act" ${state.viewMode === 'act' ? 'selected' : ''}>Current Headcount Only</option>
@@ -59,48 +62,54 @@ function SharedCalcForm(state) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full min-w-0">
             ${sortedSen.map(sen => {
                 const w = workings[sen.id]; const req = w.requiredCount; const act = existingCount[sen.id]; const diff = act - req; const isDeficit = diff < 0;
                 
                 return `
-                <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex flex-col w-full">
-                    <div class="p-6 border-b border-zinc-700/50 bg-zinc-800/80">
-                        <h3 class="text-zinc-200 text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5 text-indigo-400"></i> ${sen.name} Tier</h3>
-                        <div class="flex justify-between items-end">
-                            <div class="${state.viewMode === 'req' ? 'hidden' : ''}"><div class="text-5xl font-black text-white">${act}</div><div class="text-[10px] uppercase font-bold text-zinc-500 mt-2">Current</div></div>
-                            <div class="text-right ${state.viewMode === 'act' ? 'hidden' : ''} ${state.viewMode === 'req' ? 'w-full text-left' : ''}"><div class="text-4xl font-black text-indigo-300">${req}</div><div class="text-[10px] uppercase font-bold text-zinc-500 mt-2">Required</div></div>
+                <div class="bg-zinc-900 border border-zinc-700 rounded-3xl shadow-xl flex flex-col w-full min-w-0">
+                    <div class="p-6 md:p-8 border-b border-zinc-700/50 bg-zinc-800/80 rounded-t-3xl">
+                        <h3 class="text-zinc-200 text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-3"><i data-lucide="user-check" class="w-6 h-6 text-indigo-400"></i> ${sen.name} Tier</h3>
+                        <div class="flex justify-between items-end gap-4">
+                            <div class="${state.viewMode === 'req' ? 'hidden' : ''}">
+                                <div class="text-5xl sm:text-6xl font-black text-white">${act}</div>
+                                <div class="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-zinc-500 mt-2">Current</div>
+                            </div>
+                            <div class="text-right ${state.viewMode === 'act' ? 'hidden' : ''} ${state.viewMode === 'req' ? 'w-full text-left' : ''}">
+                                <div class="text-4xl sm:text-5xl font-black text-indigo-300">${req}</div>
+                                <div class="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-zinc-500 mt-2">Required</div>
+                            </div>
                         </div>
-                        <div class="pt-5 mt-5 border-t border-zinc-700/50 ${state.viewMode === 'both' ? '' : 'hidden'}">
+                        <div class="pt-6 mt-6 border-t border-zinc-700/50 ${state.viewMode === 'both' ? '' : 'hidden'}">
                             ${isDeficit 
-                                ? `<div class="text-red-400 font-bold text-sm bg-red-500/10 px-4 py-3 rounded-xl border border-red-500/20 uppercase flex justify-center"><i data-lucide="trending-down" class="w-5 h-5 mr-2"></i> Deficit of ${Math.abs(diff)}</div>`
-                                : `<div class="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20 uppercase flex justify-center"><i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Surplus of ${diff}</div>`
+                                ? `<div class="text-red-400 font-bold text-sm bg-red-500/10 px-5 py-4 rounded-xl border border-red-500/20 uppercase tracking-wider flex justify-center items-center shadow-inner"><i data-lucide="trending-down" class="w-5 h-5 mr-3"></i> Deficit of ${Math.abs(diff)}</div>`
+                                : `<div class="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-5 py-4 rounded-xl border border-emerald-500/20 uppercase tracking-wider flex justify-center items-center shadow-inner"><i data-lucide="trending-up" class="w-5 h-5 mr-3"></i> Surplus of ${diff}</div>`
                             }
                         </div>
                     </div>
                     
-                    <div class="p-6 bg-zinc-950/80 flex-1 border-t border-zinc-800 ${state.viewMode === 'both' ? '' : 'hidden'}">
-                        <div class="text-[10px] uppercase font-black text-zinc-500 tracking-widest mb-5 flex items-center gap-1.5"><i data-lucide="function-square" class="w-4 h-4"></i> Workings</div>
-                        <div class="space-y-4 text-xs font-mono text-zinc-300">
-                            <div class="flex justify-between border-b border-zinc-800 pb-3 items-center">
-                                <div class="flex items-center"><span>On-Site Demand:</span><button onclick="window.openModal('onSite')" class="ml-2 bg-zinc-800 rounded p-1"><i data-lucide="help-circle" class="w-4 h-4 text-zinc-500"></i></button></div>
-                                <span class="font-bold text-white bg-zinc-900 px-2 py-1 rounded border border-zinc-800">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
+                    <div class="p-6 md:p-8 bg-zinc-950/80 flex-1 border-t border-zinc-800 rounded-b-3xl ${state.viewMode === 'both' ? '' : 'hidden'} min-w-0">
+                        <div class="text-[10px] sm:text-xs uppercase font-black text-zinc-500 tracking-widest mb-6 flex items-center gap-2"><i data-lucide="function-square" class="w-4 h-4"></i> Workings</div>
+                        <div class="space-y-5 text-sm font-mono text-zinc-300">
+                            <div class="flex justify-between items-center border-b border-zinc-800 pb-3 gap-2">
+                                <div class="flex items-center gap-2"><span>On-Site Demand:</span><button onclick="window.openModal('onSite')" class="bg-zinc-800 rounded p-1.5 shadow-sm"><i data-lucide="help-circle" class="w-4 h-4 text-zinc-400"></i></button></div>
+                                <span class="font-bold text-white bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800 shadow-inner">${w.onSiteHrs.toFixed(1)} hrs/wk</span>
                             </div>
-                            <div class="flex justify-between border-b border-zinc-800 pb-3 items-center text-orange-200">
-                                <div class="flex items-center"><span>Standby Buffers:</span><button onclick="window.openModal('standby')" class="ml-2 bg-zinc-800 rounded p-1"><i data-lucide="help-circle" class="w-4 h-4 text-orange-500/50"></i></button></div>
-                                <span class="font-bold bg-orange-500/10 px-2 py-1 rounded border border-orange-500/20">+ ${w.standbyHrs.toFixed(1)} hrs</span>
+                            <div class="flex justify-between items-center border-b border-zinc-800 pb-3 text-orange-200 gap-2">
+                                <div class="flex items-center gap-2"><span>Standby Buffers:</span><button onclick="window.openModal('standby')" class="bg-zinc-800 rounded p-1.5 shadow-sm"><i data-lucide="help-circle" class="w-4 h-4 text-orange-500/60"></i></button></div>
+                                <span class="font-bold bg-orange-500/10 px-3 py-1.5 rounded-lg border border-orange-500/20 shadow-inner">+ ${w.standbyHrs.toFixed(1)} hrs</span>
                             </div>
-                            <div class="flex justify-between border-b border-zinc-800 pb-3 items-center text-indigo-300">
-                                <div class="flex items-center"><span>Base Headcount:</span><button onclick="window.openModal('baseReq')" class="ml-2 bg-zinc-800 rounded p-1"><i data-lucide="help-circle" class="w-4 h-4 text-indigo-500/50"></i></button></div>
-                                <span class="font-bold bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
+                            <div class="flex justify-between items-center border-b border-zinc-800 pb-3 text-indigo-300 gap-2">
+                                <div class="flex items-center gap-2"><span>Base Headcount:</span><button onclick="window.openModal('baseReq')" class="bg-zinc-800 rounded p-1.5 shadow-sm"><i data-lucide="help-circle" class="w-4 h-4 text-indigo-500/60"></i></button></div>
+                                <span class="font-bold bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 shadow-inner">${w.totalHrs.toFixed(1)} ÷ 15 = ${Math.ceil(w.totalHrs / 15)}</span>
                             </div>
-                            <div class="flex justify-between pb-3 items-center text-amber-300">
-                                <div class="flex items-center"><span>Reserves:</span><button onclick="window.openModal('reserve')" class="ml-2 bg-zinc-800 rounded p-1"><i data-lucide="help-circle" class="w-4 h-4 text-amber-500/50"></i></button></div>
-                                <span class="font-bold text-sm bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">+ ${w.reserveHeadcount}</span>
+                            <div class="flex justify-between items-center pb-3 text-amber-300 gap-2">
+                                <div class="flex items-center gap-2"><span>Reserves:</span><button onclick="window.openModal('reserve')" class="bg-zinc-800 rounded p-1.5 shadow-sm"><i data-lucide="help-circle" class="w-4 h-4 text-amber-500/60"></i></button></div>
+                                <span class="font-bold bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-inner">+ ${w.reserveHeadcount}</span>
                             </div>
-                            <div class="flex justify-between mt-5 bg-indigo-500/20 p-5 rounded-xl border border-indigo-500/40 text-white items-center">
-                                <div class="flex items-center"><span class="uppercase font-black text-xs">Total:</span></div>
-                                <span class="font-black text-3xl drop-shadow-md bg-zinc-950 px-4 py-1.5 rounded-lg">${req}</span>
+                            <div class="flex justify-between items-center mt-6 bg-indigo-500/20 p-5 rounded-2xl border border-indigo-500/40 text-white shadow-lg">
+                                <span class="uppercase font-black text-sm tracking-wider">Total:</span>
+                                <span class="font-black text-3xl drop-shadow-md bg-zinc-950 px-5 py-2 rounded-xl">${req}</span>
                             </div>
                         </div>
                     </div>
