@@ -57,10 +57,10 @@ export const UI = {
         
         const isErr = type === 'error';
         const toastHtml = `
-        <div id="toast-container" class="fixed top-safe pt-4 left-1/2 -translate-x-1/2 lg:top-auto lg:bottom-8 lg:left-auto lg:right-8 lg:translate-x-0 z-[200] animate-in slide-in-from-top-8 lg:slide-in-from-bottom-8 fade-in duration-300 w-[92%] lg:w-auto max-w-md">
-            <div class="${isErr ? 'bg-red-600 dark:bg-red-500 text-white' : 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white'} px-5 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-200 dark:border-zinc-700'}">
-                <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-6 h-6 shrink-0 ${isErr ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}"></i>
-                <span class="flex-1 leading-relaxed">${msg}</span>
+        <div id="toast-container" class="fixed top-safe pt-2 left-1/2 -translate-x-1/2 lg:top-auto lg:bottom-6 lg:left-auto lg:right-6 lg:translate-x-0 z-[200] animate-in slide-in-from-top-4 lg:slide-in-from-bottom-4 fade-in duration-200 w-[92%] lg:w-auto max-w-sm">
+            <div class="${isErr ? 'bg-red-600 dark:bg-red-500 text-white' : 'bg-zinc-900 dark:bg-zinc-800 text-white'} px-4 py-3 rounded-lg shadow-xl font-medium text-sm flex items-center gap-3 border ${isErr ? 'border-red-400' : 'border-zinc-700'}">
+                <i data-lucide="${isErr ? 'alert-octagon' : 'check-circle'}" class="w-5 h-5 shrink-0 ${isErr ? 'text-white' : 'text-emerald-400'}"></i>
+                <span class="flex-1 leading-snug">${msg}</span>
             </div>
         </div>
         `;
@@ -71,7 +71,6 @@ export const UI = {
     render: () => {} 
 };
 
-// Global Handlers
 window.UI = UI;
 
 window.switchTab = (tab) => { 
@@ -95,7 +94,7 @@ window.toggleTheme = () => {
 };
 
 window.updateApp = async () => {
-    UI.showToast("Updating App to latest version...", "success");
+    UI.showToast("Updating App...", "success");
     if ('serviceWorker' in navigator) {
         try { const regs = await navigator.serviceWorker.getRegistrations(); for (let r of regs) { await r.unregister(); } } catch(e) {}
     }
@@ -110,3 +109,13 @@ export function getSeniorityName(id, state) {
     return s ? s.name : 'Unassigned';
 }
 window.getSeniorityName = getSeniorityName;
+
+// Centralized generic UI classes for dense layout
+export const css = {
+    input: "w-full text-[16px] font-medium bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-zinc-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-500 outline-none transition-colors shadow-sm",
+    btnPrimary: "bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-all active:scale-95 shadow-sm outline-none flex items-center justify-center gap-2",
+    btnSecondary: "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all active:scale-95 shadow-sm outline-none flex items-center justify-center gap-2",
+    btnDanger: "bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all active:scale-95 shadow-sm outline-none flex items-center justify-center gap-2",
+    card: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm dark:shadow-md transition-colors",
+    label: "text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 block"
+};

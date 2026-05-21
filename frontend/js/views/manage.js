@@ -1,4 +1,4 @@
-import { UI, getSeniorityName } from '../store.js';
+import { UI, getSeniorityName, css } from '../store.js';
 
 export function ManageDesktop(state) { return ManageContainer(state, false); }
 export function ManageMobile(state) { return ManageContainer(state, true); }
@@ -13,109 +13,105 @@ function ManageContainer(state, isMobile) {
     const showList = !isMobile || (isMobile && !selPerson);
     const showDetail = !isMobile || (isMobile && !!selPerson);
 
-    const inputClass = "w-full text-base sm:text-lg font-bold bg-white dark:bg-[#18181b] border-2 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 text-zinc-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-500 outline-none transition-colors shadow-sm dark:shadow-none min-h-[56px]";
-
     return `
-    <div class="space-y-6 w-full h-full flex flex-col min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="space-y-4 md:space-y-6 w-full h-full flex flex-col min-w-0 animate-in fade-in duration-300">
         
         ${showList ? `
-        <div class="mb-2 shrink-0">
-            <h2 class="text-3xl font-bold text-zinc-900 dark:text-white uppercase tracking-wide transition-colors">Personnel</h2>
-            <p class="text-zinc-500 dark:text-zinc-400 text-base mt-2 transition-colors">Manage workforce, update seniority levels, and map capabilities.</p>
+        <div class="mb-1 shrink-0">
+            <h2 class="text-xl md:text-2xl font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Personnel</h2>
+            <p class="text-zinc-500 dark:text-zinc-400 text-sm mt-1">Manage workforce and map capabilities.</p>
         </div>
-        <div class="bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 md:p-8 flex flex-col xl:flex-row gap-6 shadow-xl dark:shadow-2xl shrink-0 w-full min-w-0 transition-colors">
-            <div class="flex flex-col sm:flex-row gap-4 w-full">
-                <input type="text" id="inpNewPerson" class="${inputClass}" placeholder="Add single person">
-                <select id="inpNewSeniority" class="${inputClass} sm:w-auto pr-12">
+        <div class="${css.card} p-4 flex flex-col xl:flex-row gap-4 shrink-0 w-full">
+            <div class="flex flex-col sm:flex-row gap-3 w-full">
+                <input type="text" id="inpNewPerson" class="${css.input}" placeholder="Person Name">
+                <select id="inpNewSeniority" class="${css.input} sm:w-auto pr-10">
                     ${sortedSen.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                 </select>
-                <button onclick="window.handleAddPerson()" class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-bold uppercase tracking-widest text-base shadow-lg outline-none active:scale-95 transition-transform min-h-[56px] border border-indigo-500">Add</button>
+                <button onclick="window.handleAddPerson()" class="${css.btnPrimary} w-full sm:w-auto px-6">Add</button>
             </div>
-            <div class="hidden xl:block w-px h-14 bg-zinc-200 dark:bg-zinc-700 transition-colors"></div>
-            <div class="xl:hidden h-px w-full bg-zinc-200 dark:bg-zinc-800 transition-colors"></div>
-            <div class="flex flex-col sm:flex-row gap-4 w-full">
-                <input type="text" id="inpBulkPerson" class="${inputClass}" placeholder="Bulk Import (comma separated)">
-                <button onclick="window.handleBulkImport('${defaultSenId}')" class="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-white px-10 py-4 rounded-2xl font-bold uppercase tracking-widest text-base border-2 border-zinc-300 dark:border-zinc-600 shadow-sm outline-none active:scale-95 transition-all min-h-[56px]">Import</button>
+            <div class="hidden xl:block w-px h-10 bg-zinc-200 dark:bg-zinc-700"></div>
+            <div class="xl:hidden h-px w-full bg-zinc-200 dark:bg-zinc-800"></div>
+            <div class="flex flex-col sm:flex-row gap-3 w-full">
+                <input type="text" id="inpBulkPerson" class="${css.input}" placeholder="Bulk Import (comma sep.)">
+                <button onclick="window.handleBulkImport('${defaultSenId}')" class="${css.btnSecondary} w-full sm:w-auto px-6">Import</button>
             </div>
         </div>
         ` : ''}
 
-        <div class="flex flex-col lg:flex-row gap-8 flex-1 w-full pb-6 lg:pb-0 min-w-0 mt-2 h-full">
+        <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 w-full min-w-0 h-full overflow-hidden">
             
             ${showList ? `
-            <!-- LIST VIEW -->
-            <div class="w-full lg:w-[400px] xl:w-[450px] bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-[2rem] flex flex-col shadow-xl shrink-0 ${isMobile ? 'flex-1' : 'h-[65vh]'} overflow-hidden min-w-0 transition-colors">
-                <div class="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shrink-0 transition-colors">
+            <div class="w-full lg:w-[350px] xl:w-[400px] ${css.card} flex flex-col shrink-0 ${isMobile ? 'flex-1' : 'h-full'} overflow-hidden min-w-0">
+                <div class="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 shrink-0">
                     <div class="relative">
-                        <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-zinc-400 dark:text-zinc-500"></i>
-                        <input type="text" id="searchPersonnel" placeholder="Search personnel..." value="${state.searchQuery.replace(/"/g, '&quot;')}" oninput="UI.state.searchQuery = this.value; UI.render();" class="w-full pl-14 pr-5 py-4 text-lg font-bold bg-white dark:bg-[#18181b] border-2 border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-sm dark:shadow-inner text-zinc-900 dark:text-white outline-none focus:border-indigo-500 min-h-[56px] transition-colors">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400"></i>
+                        <input type="text" id="searchPersonnel" placeholder="Search..." value="${state.searchQuery.replace(/"/g, '&quot;')}" oninput="UI.state.searchQuery = this.value; UI.render();" class="${css.input} pl-9 py-2">
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-zinc-50 dark:bg-zinc-950/30 hide-scroll w-full transition-colors">
+                <div class="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1.5 hide-scroll">
                     ${filteredPersonnel.map(p => `
-                        <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-6 py-5 rounded-2xl flex items-center justify-between transition-all outline-none ${state.selectedPersonId === p.id ? 'bg-indigo-50 dark:bg-indigo-500/15 border-2 border-indigo-500/50 shadow-md transform scale-[1.01]' : 'bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}">
-                            <div class="min-w-0 pr-4 flex-1">
-                                <div class="font-bold text-lg text-zinc-900 dark:text-white break-words whitespace-normal leading-snug mb-1 transition-colors">${p.name}</div>
-                                <div class="text-xs uppercase font-bold tracking-widest text-zinc-500 dark:text-zinc-400 transition-colors">${getSeniorityName(p.seniority, state)}</div>
+                        <button onclick="UI.state.selectedPersonId = '${p.id}'; UI.render();" class="w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-all outline-none ${state.selectedPersonId === p.id ? 'bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 shadow-sm' : 'bg-transparent border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}">
+                            <div class="min-w-0 pr-3">
+                                <div class="font-bold text-sm text-zinc-900 dark:text-white truncate">${p.name}</div>
+                                <div class="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mt-0.5">${getSeniorityName(p.seniority, state)}</div>
                             </div>
-                            <i data-lucide="chevron-right" class="w-6 h-6 text-indigo-500 dark:text-indigo-400 shrink-0 opacity-80"></i>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-400 shrink-0"></i>
                         </button>
                     `).join('')}
-                    ${filteredPersonnel.length === 0 ? `<div class="p-10 text-center text-zinc-500 text-sm font-bold uppercase tracking-widest border-2 border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl w-full transition-colors">No matches found</div>` : ''}
+                    ${filteredPersonnel.length === 0 ? `<div class="p-6 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg m-2">No matches</div>` : ''}
                 </div>
             </div>
             ` : ''}
 
             ${showDetail ? `
-            <!-- DETAIL VIEW -->
-            <div class="flex-1 bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-2xl flex flex-col w-full h-full lg:min-h-[600px] overflow-hidden animate-in ${isMobile ? 'slide-in-from-right-4' : 'fade-in'} duration-300 min-w-0 transition-colors">
+            <div class="flex-1 ${css.card} flex flex-col w-full h-full overflow-hidden animate-in ${isMobile ? 'slide-in-from-right-4' : 'fade-in'} duration-300 min-w-0">
                 ${!selPerson ? `
-                    <div class="flex-1 flex flex-col items-center justify-center opacity-50 p-10 text-center h-[500px]">
-                        <i data-lucide="user-square-2" class="w-24 h-24 mb-6 text-zinc-400 dark:text-zinc-500"></i>
-                        <p class="text-xl font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Select personnel</p>
+                    <div class="flex-1 flex flex-col items-center justify-center opacity-50 p-8 text-center">
+                        <i data-lucide="user-square-2" class="w-16 h-16 mb-4 text-zinc-400"></i>
+                        <p class="text-base font-bold uppercase tracking-widest text-zinc-400">Select personnel</p>
                     </div>
                 ` : `
-                    <div class="p-6 md:p-8 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between sm:items-center gap-5 shrink-0 bg-zinc-50 dark:bg-zinc-950 w-full min-w-0 transition-colors">
-                        <div class="w-full sm:w-auto min-w-0">
-                            ${isMobile ? `<button onclick="window.clearSelection()" class="mb-5 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-3 w-full border border-indigo-200 dark:border-indigo-500/30 outline-none transition-colors"><i data-lucide="arrow-left" class="w-5 h-5"></i> Back to List</button>` : ''}
-                            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-zinc-900 dark:text-white break-words whitespace-normal leading-tight w-full transition-colors">${selPerson.name}</h2>
-                            <p class="text-sm text-zinc-500 font-mono font-bold uppercase tracking-widest mt-2">Sys ID: ${selPerson.id.substring(0,8)}...</p>
+                    <div class="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3 shrink-0 bg-zinc-50 dark:bg-zinc-900/50">
+                        ${isMobile ? `<button onclick="window.clearSelection()" class="p-2 -ml-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white outline-none"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>` : ''}
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white truncate w-full">${selPerson.name}</h2>
+                            <p class="text-[10px] text-zinc-500 font-mono font-medium mt-0.5">ID: ${selPerson.id.substring(0,8)}...</p>
                         </div>
-                        <button onclick="UI.dispatch('deletePerson', {id: '${selPerson.id}'})" class="w-full sm:w-auto bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 px-6 py-4 rounded-2xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-3 border border-red-200 dark:border-red-500/30 shrink-0 outline-none active:scale-95 transition-all shadow-sm">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i> Delete User
+                        <button onclick="UI.dispatch('deletePerson', {id: '${selPerson.id}'})" class="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors outline-none">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
                         </button>
                     </div>
 
-                    <div class="p-6 md:p-8 flex-1 overflow-y-auto space-y-8 bg-zinc-50 dark:bg-zinc-950/20 hide-scroll w-full min-w-0 transition-colors">
+                    <div class="p-4 md:p-6 flex-1 overflow-y-auto space-y-6 hide-scroll w-full">
                         
-                        <div class="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] border-2 border-zinc-200 dark:border-zinc-700 shadow-md dark:shadow-xl w-full min-w-0 transition-colors">
-                            <label class="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-5 uppercase tracking-widest flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 transition-colors"><i data-lucide="award" class="w-6 h-6 text-indigo-500 dark:text-indigo-400"></i> Seniority Level</label>
-                            <div class="flex flex-col sm:flex-row gap-5 w-full lg:max-w-md">
-                                <select id="editSeniority" class="${inputClass} pr-12 text-indigo-700 dark:text-indigo-300">
+                        <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 md:p-5 rounded-xl border border-zinc-200 dark:border-zinc-700/50 w-full">
+                            <label class="${css.label} flex items-center gap-2 mb-3"><i data-lucide="award" class="w-4 h-4 text-indigo-500"></i> Seniority Level</label>
+                            <div class="flex flex-col sm:flex-row gap-3 w-full lg:max-w-md">
+                                <select id="editSeniority" class="${css.input}">
                                     ${sortedSen.map(s => `<option value="${s.id}" ${selPerson.seniority === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
                                 </select>
-                                <button onclick="window.handleUpdateSeniority('${selPerson.id}', '${selPerson.name}')" class="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white px-10 py-4 rounded-2xl font-bold text-base uppercase tracking-widest w-full sm:w-auto border-2 border-zinc-300 dark:border-zinc-600 shadow-sm outline-none active:scale-95 transition-all min-h-[56px]">Update</button>
+                                <button onclick="window.handleUpdateSeniority('${selPerson.id}', '${selPerson.name}')" class="${css.btnSecondary} w-full sm:w-auto px-6">Update</button>
                             </div>
                         </div>
 
-                        <div class="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] border-2 border-zinc-200 dark:border-zinc-700 shadow-md dark:shadow-xl w-full min-w-0 transition-colors">
-                            <label class="block text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-5 flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 transition-colors"><i data-lucide="shield" class="w-6 h-6 text-indigo-500 dark:text-indigo-400"></i> Capabilities</label>
-                            <div class="bg-zinc-50 dark:bg-[#18181b] border-2 border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 md:p-6 min-h-[160px] flex flex-wrap gap-4 shadow-inner transition-colors">
+                        <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 md:p-5 rounded-xl border border-zinc-200 dark:border-zinc-700/50 w-full">
+                            <label class="${css.label} flex items-center gap-2 mb-3"><i data-lucide="shield" class="w-4 h-4 text-indigo-500"></i> Capabilities</label>
+                            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 min-h-[100px] flex flex-wrap gap-2 shadow-sm">
                                 ${state.data.tags.filter(t => t.personId === selPerson.id).map(t => {
                                     const role = state.data.roles.find(r => r.id === t.roleId);
                                     if(!role) return '';
                                     return `
-                                    <div class="inline-flex items-center gap-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-200 pl-5 pr-2.5 py-2.5 rounded-2xl text-base font-bold shadow-sm break-words whitespace-normal leading-snug transition-transform hover:scale-[1.02]">
-                                        <span class="uppercase tracking-wider">${role.name}</span>
-                                        <button onclick="UI.dispatch('deleteTag', {id: '${t.id}'})" class="w-10 h-10 shrink-0 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors outline-none"><i data-lucide="x" class="w-5 h-5"></i></button>
+                                    <div class="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300 pl-3 pr-1.5 py-1.5 rounded-lg text-xs font-semibold">
+                                        <span class="uppercase">${role.name}</span>
+                                        <button onclick="UI.dispatch('deleteTag', {id: '${t.id}'})" class="w-6 h-6 rounded bg-indigo-100/50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors outline-none"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
                                     </div>
                                     `;
-                                }).join('') || `<div class="w-full text-center text-zinc-400 dark:text-zinc-500 py-8 flex flex-col items-center justify-center"><i data-lucide="ghost" class="w-12 h-12 mb-4"></i><span class="uppercase font-bold text-sm tracking-widest">No roles assigned.</span></div>`}
+                                }).join('') || `<div class="w-full text-center text-zinc-400 py-6 text-xs uppercase font-bold tracking-widest">No roles assigned.</div>`}
                             </div>
                             
-                            <div class="mt-8 flex flex-col sm:flex-row gap-5 w-full lg:max-w-2xl">
-                                <select id="assignRoleSelect" class="${inputClass} pr-12"><option value="">-- Select Capability --</option>${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
-                                <button onclick="window.handleAssign('${selPerson.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl text-base font-bold w-full sm:w-auto uppercase tracking-widest shadow-lg shrink-0 border border-indigo-500 outline-none active:scale-95 transition-all min-h-[56px]">Grant Access</button>
+                            <div class="mt-4 flex flex-col sm:flex-row gap-3 w-full lg:max-w-xl">
+                                <select id="assignRoleSelect" class="${css.input}"><option value="">-- Select Capability --</option>${state.data.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
+                                <button onclick="window.handleAssign('${selPerson.id}')" class="${css.btnPrimary} w-full sm:w-auto px-6">Grant Access</button>
                             </div>
                         </div>
                     </div>
@@ -127,7 +123,6 @@ function ManageContainer(state, isMobile) {
     `;
 }
 
-// BIND LOGIC
 window.clearSelection = () => { UI.state.selectedPersonId = null; UI.render(); };
 window.handleAddPerson = () => {
     const val = document.getElementById('inpNewPerson').value.trim(); const seniority = document.getElementById('inpNewSeniority').value;
